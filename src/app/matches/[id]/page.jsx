@@ -66,11 +66,14 @@ export default function MatchDetail() {
   }
 
   const handleContactWA = () => {
-    if (!managerPhone) return alert("Nomor WA belum diatur oleh pemilik tim.")
-    const message = `Halo ${match.teams.name}, saya lihat jadwal sparring tanggal ${match.play_date} di ${match.location_name}. Masih open slot?`
-    const url = `https://wa.me/${managerPhone}?text=${encodeURIComponent(message)}`
-    window.open(url, '_blank')
-  }
+      if (!managerPhone) return alert("Nomor WA belum diatur oleh pemilik tim.")
+      
+      // SAYA TAMBAHKAN JAM DI SINI:
+      const message = `Halo ${match.teams.name}, saya lihat jadwal sparring tanggal ${match.play_date} jam ${match.play_time.slice(0, 5)} WIB di ${match.location_name}. Masih open slot?`
+      
+      const url = `https://wa.me/${managerPhone}?text=${encodeURIComponent(message)}`
+      window.open(url, '_blank')
+    }
 
   // --- FUNGSI BARU: SHARE KE GRUP WA ---
   const handleShare = () => {
@@ -85,72 +88,190 @@ export default function MatchDetail() {
     window.open(waUrl, '_blank')
   }
 
-  if (loading) return <div className="p-10 text-center">Memuat detail...</div>
-  if (!match) return <div className="p-10 text-center">Jadwal tidak ditemukan 😔</div>
+// --- 1. MODERN LOADING SKELETON (Meniru bentuk halaman asli) ---
+  if (loading) return (
+    <div className="min-h-screen bg-gray-50 py-8 px-4 md:p-10 flex justify-center items-start animate-pulse">
+      <div className="bg-white max-w-2xl w-full rounded-3xl shadow-xl overflow-hidden border border-gray-100">
+        
+        {/* Skeleton Header */}
+        <div className="bg-gray-200 h-32 w-full p-6 flex justify-between items-center">
+            <div className="space-y-2">
+                <div className="h-4 bg-gray-300 rounded w-24"></div>
+                <div className="h-8 bg-gray-300 rounded w-48"></div>
+            </div>
+            <div className="h-10 bg-gray-300 rounded w-20"></div>
+        </div>
+
+        {/* Skeleton Content */}
+        <div className="p-6 md:p-8 space-y-8">
+            {/* Skeleton Team Card */}
+            <div className="flex items-center gap-5 p-4 rounded-2xl border border-gray-100">
+                <div className="w-16 h-16 bg-gray-200 rounded-full shrink-0"></div>
+                <div className="flex-1 space-y-2">
+                    <div className="h-6 bg-gray-200 rounded w-3/4"></div>
+                    <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                </div>
+            </div>
+            
+            <div className="border-t border-gray-100"></div>
+
+            {/* Skeleton Grid */}
+            <div className="grid md:grid-cols-2 gap-4">
+                <div className="bg-gray-50 h-32 rounded-2xl p-5 space-y-3">
+                    <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                    <div className="h-6 bg-gray-200 rounded w-2/3"></div>
+                </div>
+                <div className="bg-gray-50 h-32 rounded-2xl p-5 space-y-3">
+                    <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                    <div className="h-6 bg-gray-200 rounded w-2/3"></div>
+                </div>
+            </div>
+            
+            {/* Skeleton Button */}
+            <div className="h-14 bg-gray-200 rounded-xl w-full mt-4"></div>
+        </div>
+      </div>
+    </div>
+  )
+
+  // --- 2. MODERN NOT FOUND STATE (Tanpa Emoji) ---
+  if (!match) return (
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 text-center">
+        {/* Icon Search Kosong (SVG) */}
+        <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 mb-6 shadow-inner">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+        </div>
+        
+        <h1 className="text-3xl font-black text-gray-900 mb-2 tracking-tight">Jadwal Tidak Ditemukan</h1>
+        <p className="text-gray-500 max-w-md mx-auto mb-8 text-lg leading-relaxed">
+            Sepertinya jadwal pertandingan ini sudah dihapus oleh pemiliknya atau link yang kamu tuju salah.
+        </p>
+
+        <Link href="/" className="inline-flex items-center gap-2 bg-black hover:bg-gray-800 text-white font-bold py-4 px-8 rounded-xl shadow-lg transition transform active:scale-95">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+            Cari Lawan Lain
+        </Link>
+    </div>
+  )
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-10 flex justify-center items-start">
+    <div className="min-h-screen bg-gray-50 pt-24 pb-12 px-4 md:px-10 flex justify-center items-start">
         
-      <div className="bg-white max-w-2xl w-full rounded-2xl shadow-lg overflow-hidden border border-gray-100">
+      <div className="bg-white max-w-2xl w-full rounded-3xl shadow-xl overflow-hidden border border-gray-100 ring-1 ring-black/5">
         
-        {/* HEADER */}
-        <div className="bg-gray-900 text-white p-6 flex justify-between items-center">
-            <div>
-                <p className="text-gray-400 text-sm">Jadwal Pertandingan</p>
-                <h1 className="text-2xl font-bold">{match.play_date}</h1>
+        {/* --- HEADER: TANGGAL & WAKTU --- */}
+        <div className="bg-gray-900 text-white p-6 md:p-8 flex justify-between items-center relative overflow-hidden">
+            {/* Background Pattern Hiasan (Opsional) */}
+            <div className="absolute top-0 right-0 -mt-4 -mr-4 text-gray-800 opacity-20">
+                <svg width="120" height="120" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"></path></svg>
             </div>
-            <div className="text-right">
-                <div className="text-3xl font-bold text-blue-400">{match.play_time.slice(0,5)}</div>
-                <p className="text-xs text-gray-400 uppercase">WIB</p>
+
+            <div className="relative z-10">
+                <div className="flex items-center gap-2 text-gray-400 text-xs font-bold uppercase tracking-widest mb-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                    Jadwal Pertandingan
+                </div>
+                <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{match.play_date}</h1>
+            </div>
+            
+            <div className="text-right relative z-10">
+                <div className="flex items-center justify-end gap-1 text-blue-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    <span className="text-3xl md:text-4xl font-black tracking-tight">{match.play_time.slice(0,5)}</span>
+                </div>
+                <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">WIB</p>
             </div>
         </div>
 
-        {/* BODY CONTENT */}
+        {/* --- BODY CONTENT --- */}
         <div className="p-6 md:p-8 space-y-8">
             
-            {/* 1. IDENTITAS TIM */}
-            <Link href={`/teams/${match.teams.id}`} className="group block">
-                <div className="flex items-center gap-5 hover:bg-gray-50 p-3 -m-3 rounded-xl transition">
-                    <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center text-4xl shrink-0 overflow-hidden border border-gray-100 group-hover:border-blue-300">
-                    {match.teams?.logo_url ? <img src={match.teams.logo_url} className="w-full h-full object-cover"/> : '⚽'}
-                    </div>
-                    <div>
-                        <p className="text-sm text-gray-500 font-bold tracking-wide uppercase">Host Team</p>
-                        <h2 className="text-2xl font-bold text-gray-900 group-hover:text-blue-600 transition">{match.teams?.name}</h2>
-                        <p className="text-gray-500">{match.teams?.city}</p>
+            {/* 1. IDENTITAS TIM (HOST) */}
+            <div>
+                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 block">Host Team / Penantang</label>
+                <Link href={`/teams/${match.teams.id}`} className="group block">
+                    <div className="flex items-center gap-5 p-4 rounded-2xl border border-gray-200 bg-white hover:border-blue-400 hover:shadow-md transition cursor-pointer">
+                        {/* Avatar */}
+                        <div className="w-16 h-16 md:w-20 md:h-20 bg-gray-100 rounded-full flex items-center justify-center shrink-0 overflow-hidden border-2 border-white shadow-sm group-hover:scale-105 transition">
+                            {match.teams?.logo_url ? (
+                                <img src={match.teams.logo_url} className="w-full h-full object-cover"/>
+                            ) : (
+                                // Fallback Icon Shield (User Group)
+                                <svg className="text-gray-400 w-8 h-8 md:w-10 md:h-10" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                            )}
+                        </div>
                         
-                        <div className="mt-2">
-                            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${
-                                match.teams?.skill_level === 'Pro' ? 'bg-purple-100 text-purple-700' : 
-                                match.teams?.skill_level === 'Intermediate' ? 'bg-blue-100 text-blue-700' : 
-                                'bg-yellow-100 text-yellow-700'
-                            }`}>
-                                ⚡ Skill: {match.teams?.skill_level || 'Fun'}
-                            </span>
+                        {/* Info Teks */}
+                        <div className="flex-1 min-w-0">
+                            <h2 className="text-xl md:text-2xl font-black text-gray-900 truncate group-hover:text-blue-600 transition">
+                                {match.teams?.name}
+                            </h2>
+                            <div className="flex flex-wrap items-center gap-2 mt-1">
+                                <span className="flex items-center gap-1 text-xs font-bold text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                                    {match.teams?.city}
+                                </span>
+                                <span className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded ${
+                                    match.teams?.skill_level === 'Pro' ? 'bg-purple-100 text-purple-700' : 
+                                    match.teams?.skill_level === 'Intermediate' ? 'bg-blue-100 text-blue-700' : 
+                                    'bg-yellow-100 text-yellow-700'
+                                }`}>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                                    {match.teams?.skill_level || 'Fun'}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Chevron Arrow */}
+                        <div className="text-gray-300 group-hover:text-blue-500 group-hover:translate-x-1 transition">
+                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
                         </div>
                     </div>
-                </div>
-            </Link>
+                </Link>
+            </div>
 
-            <hr className="border-gray-100" />
+            <div className="border-t border-gray-100"></div>
 
-            {/* 2. DETAIL LAPANGAN & BIAYA */}
-            <div className="grid md:grid-cols-2 gap-6">
-                <div className="bg-gray-50 p-4 rounded-xl">
-                    <p className="text-gray-400 text-xs font-bold uppercase mb-1">Lokasi / Lapangan</p>
-                    <p className="font-bold text-lg text-gray-800">📍 {match.location_name}</p>
-                    <p className="text-sm mt-1">
+            {/* 2. DETAIL INFO GRID */}
+            <div className="grid md:grid-cols-2 gap-4 md:gap-6">
+                
+                {/* Lokasi Card */}
+                <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100 flex flex-col justify-between">
+                    <div>
+                        <div className="flex items-center gap-2 text-gray-400 text-xs font-bold uppercase mb-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                            Lokasi
+                        </div>
+                        <p className="font-bold text-lg text-gray-900 leading-tight">{match.location_name}</p>
+                    </div>
+                    <div className="mt-4">
                         {match.is_venue_booked ? 
-                            <span className="text-green-600 font-bold">✅ Sudah Booking</span> : 
-                            <span className="text-orange-600 font-bold">⚠️ Cari Bareng / Belum Booking</span>
+                            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-green-700 bg-green-100 px-3 py-1.5 rounded-full">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                Booking Aman
+                            </span> : 
+                            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-orange-700 bg-orange-100 px-3 py-1.5 rounded-full">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                                Belum Booking
+                            </span>
                         }
-                    </p>
+                    </div>
                 </div>
 
-                <div className="bg-gray-50 p-4 rounded-xl">
-                    <p className="text-gray-400 text-xs font-bold uppercase mb-1">Sistem Pembayaran</p>
-                    <p className="font-bold text-lg text-gray-800">💰 {match.fee_type}</p>
-                    <p className="text-sm text-gray-500 mt-1">
+                {/* Biaya Card */}
+                <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100 flex flex-col justify-between">
+                    <div>
+                        <div className="flex items-center gap-2 text-gray-400 text-xs font-bold uppercase mb-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                            Sistem Bayar
+                        </div>
+                        <p className="font-bold text-lg text-gray-900 leading-tight">{match.fee_type}</p>
+                    </div>
+                    <p className="text-sm text-gray-500 font-medium mt-4">
                         {match.fee_type === 'Split' ? 'Bayar Patungan (50:50)' : 
                          match.fee_type === 'LoserPays' ? 'Yang Kalah Bayar Lapangan' : 
                          'Tuan Rumah yang Bayar'}
@@ -158,26 +279,30 @@ export default function MatchDetail() {
                 </div>
             </div>
 
-            {/* 3. TOMBOL AKSI (WA & SHARE) */}
+            {/* 3. TOMBOL AKSI */}
             <div className="pt-4 space-y-3">
-                {/* Kontak Lawan (Utama) */}
+                
+                {/* Hubungi WhatsApp */}
                 <button 
                     onClick={handleContactWA}
-                    className="w-full bg-green-600 hover:bg-green-700 text-white text-lg font-bold py-4 rounded-xl shadow-lg shadow-green-200 transition flex items-center justify-center gap-2"
+                    className="group w-full bg-[#25D366] hover:bg-[#20bd5a] text-white text-lg font-bold py-4 px-6 rounded-xl shadow-lg shadow-green-200 transition-all transform active:scale-95 flex items-center justify-center gap-3"
                 >
-                    <span>💬</span> Hubungi Lawan (WhatsApp)
+                    <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.355-5.294 9.881 9.881 0 019.884-9.881 9.881 9.881 0 019.88 9.88 9.88 9.88 0 01-9.88 9.88M12 2C6.48 2 2 6.48 2 12c0 1.84.48 3.58 1.32 5.12L2.12 21.88l4.88-1.21C8.42 21.52 10.16 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2z"/></svg>
+                    Hubungi Lawan
                 </button>
                 
-                {/* Tombol Share (Baru) */}
+                {/* Tombol Share */}
                 <button 
                     onClick={handleShare}
-                    className="w-full bg-white border-2 border-gray-200 hover:bg-gray-50 text-gray-700 text-lg font-bold py-3 rounded-xl transition flex items-center justify-center gap-2"
+                    className="w-full bg-white border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700 text-lg font-bold py-3.5 px-6 rounded-xl transition flex items-center justify-center gap-2"
                 >
-                    <span>📤</span> Bagikan ke Grup WA
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
+                    Bagikan
                 </button>
                 
-                <Link href="/" className="block text-center text-gray-500 font-bold hover:text-black py-2">
-                    &larr; Kembali cari lawan lain
+                <Link href="/" className="flex items-center justify-center gap-2 text-gray-400 font-bold hover:text-gray-900 py-4 transition text-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                    Cari lawan lain
                 </Link>
             </div>
 

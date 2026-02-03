@@ -59,8 +59,61 @@ export default function PublicTeamProfile() {
     }
   }
 
-  if (loading) return <div className="p-20 text-center text-gray-500">Memuat profil tim...</div>
-  if (!team) return <div className="p-20 text-center text-gray-500">Tim tidak ditemukan 😔</div>
+  // --- 1. MODERN LOADING STATE (SKELETON) ---
+  if (loading) return (
+    <div className="min-h-screen bg-gray-50 pb-20 animate-pulse">
+      {/* Skeleton Banner */}
+      <div className="h-48 md:h-64 bg-gray-200 w-full relative"></div>
+      
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 -mt-20 relative z-10">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 md:p-8 flex flex-col md:flex-row gap-8 items-start">
+            
+            {/* Skeleton Avatar */}
+            <div className="w-32 h-32 md:w-40 md:h-40 bg-gray-300 rounded-full border-4 border-white -mt-16 md:-mt-24 flex-shrink-0 mx-auto md:mx-0"></div>
+
+            {/* Skeleton Info Tim */}
+            <div className="flex-1 w-full space-y-4 mt-2 md:mt-0">
+                <div className="h-8 bg-gray-200 rounded w-3/4 md:w-1/2 mx-auto md:mx-0"></div>
+                <div className="flex justify-center md:justify-start gap-2">
+                    <div className="h-6 bg-gray-200 rounded w-20"></div>
+                    <div className="h-6 bg-gray-200 rounded w-20"></div>
+                </div>
+            </div>
+        </div>
+
+        {/* Skeleton Grid Jadwal */}
+        <div className="mt-10 grid gap-4 md:grid-cols-2">
+            <div className="h-32 bg-gray-200 rounded-xl"></div>
+            <div className="h-32 bg-gray-200 rounded-xl"></div>
+        </div>
+      </div>
+    </div>
+  )
+
+  // --- 2. MODERN NOT FOUND STATE (ERROR UI) ---
+  if (!team) return (
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 text-center">
+        {/* Icon Not Found (Search Cross) */}
+        <div className="w-24 h-24 bg-red-50 rounded-full flex items-center justify-center text-red-500 mb-6 shadow-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                <line x1="11" y1="8" x2="11" y2="14"></line>
+                <line x1="11" y1="14" x2="11.01" y2="14"></line>
+            </svg>
+        </div>
+        
+        <h1 className="text-3xl font-black text-gray-900 mb-2">Tim Tidak Ditemukan</h1>
+        <p className="text-gray-500 max-w-md mx-auto mb-8 text-lg">
+            Waduh, sepertinya tim yang kamu cari sudah bubar atau link-nya salah.
+        </p>
+
+        <Link href="/" className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition transform hover:-translate-y-1">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+            Kembali ke Beranda
+        </Link>
+    </div>
+  )
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
