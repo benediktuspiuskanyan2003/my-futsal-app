@@ -46,8 +46,16 @@ export default function MatchDetail() {
           .select('whatsapp_number')
           .eq('id', matchData.teams.manager_id)
           .single()
+
+        let noWaFormat = profileData?.whatsapp_number || ''
+        if (noWaFormat.startsWith('0')) {
+          noWaFormat = '62' + noWaFormat.slice(1)
+        } else if (noWaFormat && !noWaFormat.startsWith('62')) {
+          noWaFormat = '62' + noWaFormat
+        }
+
         
-        if (profileData) setManagerPhone(profileData.whatsapp_number)
+        if (profileData) setManagerPhone(noWaFormat)
       }
 
     } catch (error) {
