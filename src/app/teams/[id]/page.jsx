@@ -13,16 +13,24 @@ export default function PublicTeamProfile() {
   const [matches, setMatches] = useState([])
   const [loading, setLoading] = useState(true)
   const [manager, setManager] = useState(null)
+  const [currentUser, setCurrentUser] = useState(null)
   
   
   // State untuk Lightbox (Preview Gambar Fullscreen)
   const [previewImage, setPreviewImage] = useState(null)
 
-  useEffect(() => {
-    if (id) fetchTeamData()
+    useEffect(() => {
+    // 1. Cek User Login saat halaman dimuat
+    const checkUser = async () => {
+        const { data: { user } } = await supabase.auth.getUser()
+        setCurrentUser(user)
+    }
+    checkUser()
+
+    if (id) fetchTeamDetail()
   }, [id])
 
-  const fetchTeamData = async () => {
+  const fetchTeamDetail = async () => {
     try {
       setLoading(true)
 
@@ -229,16 +237,27 @@ export default function PublicTeamProfile() {
             </p>
 
             {/* Tombol WA */}
-            <a 
-                // Pastikan manager.whatsapp_number sudah diformat di logic fetch di atas
-                href={`https://wa.me/${manager.whatsapp_number}`} 
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-xs font-bold text-white bg-green-600 hover:bg-green-700 px-3 py-1 rounded-full transition shadow-sm"
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
-                Chat WhatsApp
-            </a>
+            {/* JIKA USER SUDAH LOGIN -> TAMPILKAN TOMBOL WA */}
+            {currentUser ? (
+                <a 
+                    href={`https://wa.me/${manager.whatsapp_number}`} 
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs font-bold text-white bg-green-600 hover:bg-green-700 px-3 py-1 rounded-full transition shadow-sm"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+                    Chat WhatsApp
+                </a>
+            ) : (
+                // JIKA BELUM LOGIN -> TAMPILKAN TOMBOL LOGIN
+                <Link 
+                    href="/login"
+                    className="inline-flex items-center gap-1 text-xs font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-full transition"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                    Login Info
+                </Link>
+            )}
         </div>
     </div>
 )}
