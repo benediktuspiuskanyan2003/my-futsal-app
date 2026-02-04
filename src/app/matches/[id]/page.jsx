@@ -221,7 +221,7 @@ export default function MatchDetail() {
 
 // --- 1. MODERN LOADING SKELETON (Meniru bentuk halaman asli) ---
   if (loading) return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 md:p-10 flex justify-center items-start animate-pulse">
+    <div className="min-h-screen bg-gray-50 py-8 px-4 md:p-10 flex justify-center items-start animate-pulse, pt-24">
       <div className="bg-white max-w-2xl w-full rounded-3xl shadow-xl overflow-hidden border border-gray-100">
         
         {/* Skeleton Header */}
@@ -269,7 +269,7 @@ export default function MatchDetail() {
 
   // --- 2. MODERN NOT FOUND STATE (Tanpa Emoji) ---
   if (!match) return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 text-center">
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 text-center pt-24">
         {/* Icon Search Kosong (SVG) */}
         <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 mb-6 shadow-inner">
             <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -472,16 +472,30 @@ export default function MatchDetail() {
             {/* 3. TOMBOL AKSI */}
             <div className="pt-4 space-y-3">
                 
-                {/* Hubungi WhatsApp (Primary) */}
-                <button 
-                    onClick={handleContactWA}
-                    className="group w-full bg-[#25D366] hover:bg-[#20bd5a] text-white text-lg font-bold py-4 px-6 rounded-xl shadow-lg shadow-green-200 transition-all transform active:scale-95 flex items-center justify-center gap-3"
-                >
-                    <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.355-5.294 9.881 9.881 0 019.884-9.881 9.881 9.881 0 019.88 9.88 9.88 9.88 0 01-9.88 9.88M12 2C6.48 2 2 6.48 2 12c0 1.84.48 3.58 1.32 5.12L2.12 21.88l4.88-1.21C8.42 21.52 10.16 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2z"/></svg>
-                    Hubungi Lawan
-                </button>
+                {/* --- LOGIC PROTEKSI KONTAK --- */}
+                {currentUser ? (
+                    // KONDISI 1: USER SUDAH LOGIN (Boleh Klik)
+                    <button 
+                        onClick={handleContactWA}
+                        className="group w-full bg-[#25D366] hover:bg-[#20bd5a] text-white text-lg font-bold py-4 px-6 rounded-xl shadow-lg shadow-green-200 transition-all transform active:scale-95 flex items-center justify-center gap-3"
+                    >
+                        <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.355-5.294 9.881 9.881 0 019.884-9.881 9.881 9.881 0 019.88 9.88 9.88 9.88 0 01-9.88 9.88M12 2C6.48 2 2 6.48 2 12c0 1.84.48 3.58 1.32 5.12L2.12 21.88l4.88-1.21C8.42 21.52 10.16 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2z"/></svg>
+                        Hubungi Lawan
+                    </button>
+                ) : (
+                    // KONDISI 2: USER BELUM LOGIN (Tombol Terkunci)
+                    <Link href="/login" className="block">
+                        <button 
+                            className="w-full bg-gray-100 text-gray-400 text-lg font-bold py-4 px-6 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center gap-3 cursor-pointer hover:bg-gray-200 hover:text-gray-600 transition"
+                        >
+                            {/* Icon Gembok */}
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                            Login untuk Hubungi
+                        </button>
+                    </Link>
+                )}
                 
-                {/* Tombol Share (Secondary) */}
+                {/* Tombol Share (Secondary) - Biarkan tetap bisa diklik siapa saja */}
                 <button 
                     onClick={handleShare}
                     className="w-full bg-white border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700 text-lg font-bold py-3.5 px-6 rounded-xl transition flex items-center justify-center gap-2"

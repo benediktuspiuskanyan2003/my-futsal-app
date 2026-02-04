@@ -304,7 +304,7 @@ export default function Dashboard() {
     try {
         const { error } = await supabase
             .from('matches')
-            .delete()
+            .update({ is_deleted: true })
             .eq('id', deleteTargetId) // Pakai ID dari State
 
         if (error) throw error
@@ -557,74 +557,133 @@ export default function Dashboard() {
                     </div>
                 </div>
 
-                <form onSubmit={handleUpdate} className="space-y-4">
-                    <div className="grid md:grid-cols-2 gap-4">
-                        {/* NAMA TIM */}
-                        <div>
-                            <label className="block text-xs text-gray-500 mb-1">Nama Tim</label>
-                            <input type="text" className="w-full border p-2 rounded text-gray-900 bg-white" value={team?.name || ''} onChange={(e) => setTeam({...team, name: e.target.value})}/>
+            <form onSubmit={handleUpdate} className="space-y-6">
+                <div className="grid md:grid-cols-2 gap-5">
+                    
+                    {/* 1. NAMA TIM (Max 30 Karakter) */}
+                    <div>
+                        <div className="flex justify-between mb-1">
+                            <label className="block text-xs font-bold text-gray-500">Nama Tim</label>
+                            {/* Counter Karakter */}
+                            <span className={`text-[10px] ${team?.name?.length >= 30 ? 'text-red-500 font-bold' : 'text-gray-400'}`}>
+                                {team?.name?.length || 0}/30
+                            </span>
                         </div>
-                        
-                        {/* INPUT BARU: HOMEBASE */}
-                        <div>
-                            <label className="block text-xs text-gray-500 mb-1">Markas / Lapangan Favorit</label>
-                            <input 
-                                type="text" 
-                                className="w-full border p-2 rounded text-gray-900 bg-white" 
-                                placeholder="Cth: Garing Futsal"
-                                value={team?.homebase || ''} 
-                                onChange={(e) => setTeam({...team, homebase: e.target.value})}
-                            />
-                        </div>
+                        <input 
+                            type="text" 
+                            maxLength={30} // Batas Input
+                            className={`w-full border p-2.5 rounded-lg text-gray-900 bg-white outline-none focus:ring-2 transition
+                                ${team?.name?.length >= 30 
+                                    ? 'border-red-500 focus:ring-red-200 bg-red-50' // Style jika Merah/Mentok
+                                    : 'border-gray-200 focus:ring-blue-500' // Style Normal
+                                }`}
+                            value={team?.name || ''} 
+                            onChange={(e) => setTeam({...team, name: e.target.value})}
+                        />
+                    </div>
+                    
+                    {/* 2. HOMEBASE */}
+                    <div>
+                        <label className="block text-xs font-bold text-gray-500 mb-1">Markas / Lapangan Favorit</label>
+                        <input 
+                            type="text" 
+                            maxLength={40}
+                            className="w-full border border-gray-200 p-2.5 rounded-lg text-gray-900 bg-white outline-none focus:ring-2 focus:ring-blue-500" 
+                            placeholder="Cth: Garing Futsal"
+                            value={team?.homebase || ''} 
+                            onChange={(e) => setTeam({...team, homebase: e.target.value})}
+                        />
+                    </div>
 
-                        {/* KOTA (FILTER) */}
-                        <div>
-                            <label className="block text-xs text-gray-500 mb-1">Kota Homebase (Filter)</label>
-                            <select className="w-full border p-2 rounded bg-white text-gray-900" value={team?.city || ''} onChange={(e) => setTeam({...team, city: e.target.value})}>
-                                <option value="" disabled>-- Pilih Kota --</option>
-                                {CITIES.map((city) => <option key={city} value={city}>{city}</option>)}
-                            </select>
-                        </div>
-
-                        <div>
-                            {/* Label dengan Icon Petir Kecil */}
-                            <label className="block text-xs text-gray-500 mb-1 flex items-center gap-1">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-                                </svg>
-                                Level Permainan
-                            </label>
-                            
-                            <div className="relative">
-                                <select 
-                                    className="w-full border border-gray-300 p-2 rounded-lg bg-white text-gray-900 appearance-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition cursor-pointer" 
-                                    value={team?.skill_level || 'Fun'} 
-                                    onChange={(e) => setTeam({...team, skill_level: e.target.value})}
-                                >
-                                    <option value="Fun">Fun / Hura-hura</option>
-                                    <option value="Medium">Menengah / Sparring Rutin</option>
-                                    <option value="Pro">Pro / Kompetitif</option>
-                                </select>
-                                
-                                {/* Custom Icon Panah Bawah (Supaya tidak kaku) */}
-                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
-                                    <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                                    </svg>
-                                </div>
-                            </div>
-                        </div>
-                        <div>
-                            <label className="block text-xs text-gray-500 mb-1">Nama Manager</label>
-                            <input type="text" className="w-full border p-2 rounded text-gray-900 bg-white" value={profile.full_name || ''} onChange={(e) => setProfile({...profile, full_name: e.target.value})}/>
-                        </div>
-                        <div>
-                            <label className="block text-xs text-gray-500 mb-1 text-red-600 font-bold">No WhatsApp (Wajib)</label>
-                            <input type="text" className="w-full border p-2 rounded bg-red-50 border-red-200 text-gray-900" value={profile.whatsapp_number || ''} onChange={(e) => setProfile({...profile, whatsapp_number: e.target.value})}/>
+                    {/* 3. KOTA (FILTER) - Style Panah Diperbaiki */}
+                    <div className="relative">
+                        <label className="block text-xs font-bold text-gray-500 mb-1">Kota Homebase (Filter)</label>
+                        <select 
+                            className="w-full border border-gray-200 p-2.5 rounded-lg bg-white text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer" 
+                            value={team?.city || ''} 
+                            onChange={(e) => setTeam({...team, city: e.target.value})}
+                        >
+                            {CITIES.map((city) => <option key={city} value={city}>{city}</option>)}
+                        </select>
+                        {/* Custom Arrow Icon */}
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 pt-6 text-gray-500">
+                            <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
                         </div>
                     </div>
-                    <button className="bg-black text-white px-6 py-2 rounded-lg font-bold w-full mt-2 hover:bg-gray-800">Simpan Perubahan</button>
-                </form>
+
+                    {/* 4. LEVEL PERMAINAN */}
+                    <div>
+                        <label className="block text-xs font-bold text-gray-500 mb-1 flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                            Level Permainan
+                        </label>
+                        <div className="relative">
+                            <select 
+                                className="w-full border border-gray-200 p-2.5 rounded-lg bg-white text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer" 
+                                value={team?.skill_level || 'Fun'} 
+                                onChange={(e) => setTeam({...team, skill_level: e.target.value})}
+                            >
+                                <option value="Fun">Fun / Hura-hura</option>
+                                <option value="Medium">Menengah / Sparring Rutin</option>
+                                <option value="Pro">Pro / Kompetitif</option>
+                            </select>
+                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
+                                <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 5. NAMA MANAGER (Max 50 Karakter) */}
+                    <div>
+                        <div className="flex justify-between mb-1">
+                            <label className="block text-xs font-bold text-gray-500">Nama Manager</label>
+                            <span className={`text-[10px] ${profile?.full_name?.length >= 50 ? 'text-red-500 font-bold' : 'text-gray-400'}`}>
+                                {profile?.full_name?.length || 0}/50
+                            </span>
+                        </div>
+                        <input 
+                            type="text" 
+                            maxLength={50}
+                            className={`w-full border p-2.5 rounded-lg text-gray-900 bg-white outline-none focus:ring-2 transition
+                                ${profile?.full_name?.length >= 50 
+                                    ? 'border-red-500 focus:ring-red-200 bg-red-50' 
+                                    : 'border-gray-200 focus:ring-blue-500'
+                                }`}
+                            value={profile.full_name || ''} 
+                            onChange={(e) => setProfile({...profile, full_name: e.target.value})}
+                        />
+                    </div>
+
+                    {/* 6. NO WHATSAPP (Input Angka Saja) */}
+                    <div>
+                        <label className="block text-xs font-bold text-gray-500 mb-1 text-green-600">No WhatsApp (Wajib)</label>
+                        <div className="relative">
+                            {/* Prefix +62 */}
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500 font-bold text-sm">
+                                +62
+                            </div>
+                            <input 
+                                type="tel" 
+                                maxLength={15}
+                                className="w-full pl-11 pr-3 py-2.5 border border-green-200 bg-green-50 rounded-lg text-gray-900 outline-none focus:ring-2 focus:ring-green-500 font-medium placeholder-gray-400" 
+                                placeholder="812xxxx"
+                                // Logika: Hapus '62' atau '0' di depan saat ditampilkan agar user tidak bingung
+                                value={profile.whatsapp_number ? (profile.whatsapp_number.startsWith('62') ? profile.whatsapp_number.slice(2) : profile.whatsapp_number.startsWith('0') ? profile.whatsapp_number.slice(1) : profile.whatsapp_number) : ''}
+                                onChange={(e) => {
+                                    const val = e.target.value.replace(/\D/g, '') // Hanya Angka
+                                    setProfile({...profile, whatsapp_number: val ? `62${val}` : ''})
+                                }}
+                            />
+                        </div>
+                        <p className="text-[10px] text-gray-400 mt-1">*Masukkan angka saja, tanpa 0 di depan.</p>
+                    </div>
+
+                </div>
+                
+                <button className="bg-gray-900 text-white px-6 py-3 rounded-xl font-bold w-full mt-4 hover:bg-black transition shadow-lg transform active:scale-95">
+                    Simpan Perubahan
+                </button>
+            </form>
             </div>
           ) : (
             // MODE VIEW

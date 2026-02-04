@@ -1,3 +1,4 @@
+// src/app/login/page.jsx
 'use client'
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
@@ -9,54 +10,28 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false) // Fitur lihat password
-
+  const [showPassword, setShowPassword] = useState(false)
   const [notification, setNotification] = useState(null)
-  
-  // State Mode: Login vs Daftar
-  const [isLoginMode, setIsLoginMode] = useState(true)
 
-  const handleAuth = async (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault()
     setLoading(true)
-    setNotification(null) // Reset notifikasi sebelumnya (jika ada)
+    setNotification(null)
 
     try {
-      if (isLoginMode) {
-        // --- LOGIN ---
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        })
-        if (error) throw error
-        
-        // Login Sukses -> Langsung Redirect (Tidak perlu pop up biar cepat)
-        router.push('/dashboard') 
-
-      } else {
-        // --- DAFTAR ---
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-        })
-        if (error) throw error
-        
-        // Daftar Sukses -> Tampilkan Pop-up Sukses
-        setNotification({
-            type: 'success',
-            title: 'Pendaftaran Berhasil! 🚀',
-            message: 'Akun Anda telah dibuat. Silakan cek email untuk verifikasi atau login langsung.'
-        })
-        
-        // Opsional: Redirect otomatis setelah beberapa detik jika mau
-        // setTimeout(() => router.push('/dashboard'), 2000)
-      }
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+      if (error) throw error
+      
+      // Login Sukses
+      router.push('/dashboard') 
     } catch (error) {
-      // Error (Login/Daftar) -> Tampilkan Pop-up Error
       setNotification({
         type: 'error',
         title: 'Gagal Masuk',
-        message: error.message || 'Terjadi kesalahan pada sistem.'
+        message: 'Email atau password salah. Silakan cek kembali.'
       })
     } finally {
       setLoading(false)
@@ -64,7 +39,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex bg-white pt-20 md:pt-20">
+    <div className="min-h-screen flex bg-white pt-18"> {/* Added more padding-top (pt-24) to avoid navbar overlap on mobile */}
       
       {/* BAGIAN KIRI: IMAGE & BRANDING (Hidden di HP, Muncul di Laptop) */}
       <div className="hidden lg:flex w-1/2 bg-blue-600 relative overflow-hidden items-center justify-center">
@@ -80,7 +55,7 @@ export default function LoginPage() {
                 Sparring<span className="text-blue-200">Futsal</span>
             </h2>
             <p className="text-lg text-blue-100 max-w-md mx-auto leading-relaxed">
-                "Jangan biarkan timmu menganggur. Temukan lawan tanding sepadan dan perluas jaringan lewat olahraga."
+                "Masuk dan atur jadwal timmu sekarang. Temukan lawan tanding sepadan."
             </p>
             
             {/* Illustrasi Icon Besar */}
@@ -92,37 +67,21 @@ export default function LoginPage() {
 
       {/* BAGIAN KANAN: FORM LOGIN */}
       <div className="w-full lg:w-1/2 flex flex-col justify-center items-center p-8 relative">
-        
-        {/* TOMBOL KEMBALI (Pojok Kiri Atas) */}
-        <Link href="/" className="absolute top-8 left-8 flex items-center gap-2 text-gray-500 hover:text-black transition group">
-            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center group-hover:bg-gray-200 transition">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-            </div>
-            <span className="text-sm font-bold">Kembali</span>
-        </Link>
 
         <div className="w-full max-w-md space-y-8">
             
-            {/* Header Form */}
+            {/* Header Form dengan Logo SVG */}
             <div className="text-center">
-                <div className="inline-block p-3 rounded-2xl bg-blue-50 text-blue-600 mb-4">
-                    {/* Icon User / Add User Dynamic */}
-                    {isLoginMode ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                    ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
-                    )}
+                <div className="inline-block p-3 rounded-2xl bg-blue-50 text-blue-600 mb-4 shadow-sm border border-blue-100">
+                    {/* SVG Logo Modern (User Icon) */}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                 </div>
-                <h2 className="text-3xl font-black text-gray-900 tracking-tight">
-                    {isLoginMode ? 'Selamat Datang' : 'Buat Akun Baru'}
-                </h2>
-                <p className="mt-2 text-gray-500">
-                    {isLoginMode ? 'Masuk untuk mengatur jadwal tim.' : 'Daftar gratis dan mulai cari lawan sparring.'}
-                </p>
+                <h2 className="text-3xl font-black text-gray-900 tracking-tight">Selamat Datang</h2>
+                <p className="mt-2 text-gray-500">Masuk untuk mengakses dashboard tim.</p>
             </div>
 
             {/* Form Input */}
-            <form onSubmit={handleAuth} className="space-y-5">
+            <form onSubmit={handleLogin} className="space-y-5">
                 
                 {/* Email Field */}
                 <div>
@@ -144,7 +103,11 @@ export default function LoginPage() {
 
                 {/* Password Field */}
                 <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">Password</label>
+                    <div className="flex justify-between items-center mb-1">
+                        <label className="block text-sm font-bold text-gray-700">Password</label>
+                        {/* Opsional: Link Lupa Password (bisa ditambahkan nanti) */}
+                        {/* <a href="#" className="text-xs font-bold text-blue-600 hover:underline">Lupa password?</a> */}
+                    </div>
                     <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
@@ -152,7 +115,6 @@ export default function LoginPage() {
                         <input
                             type={showPassword ? "text" : "password"}
                             required
-                            minLength={6}
                             className="w-full pl-10 pr-10 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition font-medium text-gray-900 placeholder-gray-400"
                             placeholder="••••••••"
                             value={password}
@@ -173,7 +135,7 @@ export default function LoginPage() {
                     </div>
                 </div>
 
-                {/* Tombol Login/Register */}
+                {/* Tombol Login */}
                 <button
                     type="submit"
                     disabled={loading}
@@ -185,79 +147,35 @@ export default function LoginPage() {
                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
                     ) : (
-                        isLoginMode ? 'Masuk ke Dashboard' : 'Daftar Sekarang'
+                        'Masuk ke Dashboard'
                     )}
                 </button>
             </form>
 
-            {/* Toggle Switch Login/Register */}
             <div className="mt-8 pt-6 border-t border-gray-100 text-center">
                 <p className="text-gray-500 text-sm">
-                    {isLoginMode ? 'Belum punya akun tim?' : 'Sudah punya akun?'}
-                    <button 
-                        onClick={() => {
-                            setIsLoginMode(!isLoginMode);
-                            setPassword(''); // Reset password field
-                        }}
-                        className="ml-2 font-bold text-blue-600 hover:text-blue-700 hover:underline transition"
-                    >
-                        {isLoginMode ? 'Daftar Gratis' : 'Login disini'}
-                    </button>
+                    Belum punya akun tim? 
+                    <Link href="/register" className="ml-2 font-bold text-blue-600 hover:text-blue-700 hover:underline transition">
+                        Daftar Gratis
+                    </Link>
                 </p>
             </div>
 
         </div>
       </div>
-
-    {/* --- MODAL NOTIFIKASI (MODERN UI) --- */}
+      
+      {/* NOTIFIKASI ERROR (Simpel) */}
       {notification && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity animate-fade-in">
-           
-           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 transform transition-all scale-100 flex flex-col items-center text-center">
-              
-              {/* ICON DINAMIS */}
-              <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-5 ${notification.type === 'success' ? 'bg-green-50' : 'bg-red-50'}`}>
-                 {notification.type === 'success' ? (
-                    // ICON SUKSES (Checklist)
-                    <div className="w-12 h-12 bg-green-500 text-white rounded-full flex items-center justify-center shadow-lg shadow-green-200">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                    </div>
-                 ) : (
-                    // ICON ERROR (Silang)
-                    <div className="w-12 h-12 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg shadow-red-200">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                    </div>
-                 )}
-              </div>
-
-              {/* TEKS PESAN */}
-              <h3 className={`text-xl font-black mb-2 ${notification.type === 'success' ? 'text-gray-900' : 'text-red-600'}`}>
-                 {notification.title}
-              </h3>
-              <p className="text-gray-500 text-sm leading-relaxed mb-8">
-                 {notification.message}
-              </p>
-
-              {/* TOMBOL AKSI */}
-              <button 
-                 onClick={() => {
-                     setNotification(null)
-                     // Jika sukses daftar, arahkan ke dashboard saat ditutup
-                     if (notification.type === 'success') router.push('/dashboard')
-                 }}
-                 className={`w-full py-3.5 rounded-xl font-bold text-white transition shadow-lg transform active:scale-95 ${
-                    notification.type === 'success' 
-                    ? 'bg-green-600 hover:bg-green-700 shadow-green-200' 
-                    : 'bg-red-600 hover:bg-red-700 shadow-red-200'
-                 }`}
-              >
-                 {notification.type === 'success' ? 'Lanjut ke Dashboard' : 'Coba Lagi'}
-              </button>
-
-           </div>
+        <div className="fixed bottom-5 right-5 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded shadow-lg animate-fade-in-up z-50">
+            <div className="flex justify-between items-start">
+                <div>
+                    <p className="font-bold">{notification.title}</p>
+                    <p className="text-sm mt-1">{notification.message}</p>
+                </div>
+                <button onClick={() => setNotification(null)} className="text-red-500 hover:text-red-700 font-bold text-xl ml-4">&times;</button>
+            </div>
         </div>
       )}
-
     </div>
   )
 }
