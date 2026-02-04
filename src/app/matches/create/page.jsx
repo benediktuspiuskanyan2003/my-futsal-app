@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { CITIES } from '../../../lib/cities'
 
 export default function CreateMatch() {
   const router = useRouter()
@@ -212,20 +213,42 @@ export default function CreateMatch() {
                 ⚠️ Buat Profil Tim Dulu
               </p>
               <div className="space-y-3">
+                
+                {/* Input Nama Tim */}
                 <div>
                   <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Nama Tim</label>
                   <input required type="text" className="w-full p-2.5 border border-yellow-300 rounded-lg focus:ring-2 focus:ring-yellow-400 outline-none" 
                     placeholder="Contoh: Garuda FC"
+                    value={formData.new_team_name || ''}
                     onChange={(e) => setFormData({...formData, new_team_name: e.target.value})} 
                   />
                 </div>
+
+                {/* Input Kota (DROPDOWN / SELECT) */}
                 <div>
                   <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Kota Homebase</label>
-                  <input required type="text" className="w-full p-2.5 border border-yellow-300 rounded-lg focus:ring-2 focus:ring-yellow-400 outline-none" 
-                    placeholder="Contoh: Jakarta Selatan"
-                    onChange={(e) => setFormData({...formData, new_team_city: e.target.value})}
-                  />
+                  <div className="relative">
+                    <select 
+                        required 
+                        className="w-full p-2.5 border border-yellow-300 rounded-lg focus:ring-2 focus:ring-yellow-400 outline-none bg-white text-gray-900 appearance-none cursor-pointer"
+                        value={formData.new_team_city || ''}
+                        onChange={(e) => setFormData({...formData, new_team_city: e.target.value})}
+                    >
+                        <option value="" disabled>-- Pilih Kota --</option>
+                        {CITIES.map((city) => (
+                            <option key={city} value={city}>{city}</option>
+                        ))}
+                    </select>
+                    
+                    {/* Icon Panah Custom */}
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-yellow-600">
+                        <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                            <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
+                        </svg>
+                    </div>
+                  </div>
                 </div>
+
               </div>
             </div>
           )}
