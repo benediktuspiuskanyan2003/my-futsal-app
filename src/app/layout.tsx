@@ -14,9 +14,25 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Futsal Sparring App",
-  description: "Cari lawan futsal di kotamu dengan mudah.",
+  title: "SparZone - Cari Lawan Futsal",
+  description: "Aplikasi cari lawan sparring futsal terpercaya. Temukan tim sepadan di kotamu sekarang!",
+  openGraph: {
+    title: 'SparZone - Cari Lawan Futsal',
+    description: 'Jangan biarkan jadwal kosong. Gas sparring sekarang!',
+    url: 'https://sparzone.vercel.app', // Ganti dengan domain asli nanti
+    siteName: 'SparZone',
+    images: [
+      {
+        url: 'https://link-ke-gambar-banner-anda.com/og-image.jpg', // Ganti dengan link gambar banner promo
+        width: 1200,
+        height: 630,
+      },
+    ],
+    locale: 'id_ID',
+    type: 'website',
+  },
 };
+
 
 export default function RootLayout({
   children,
