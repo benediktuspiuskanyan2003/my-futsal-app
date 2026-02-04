@@ -211,26 +211,37 @@ export default function PublicTeamProfile() {
                     </div>
                 </div>
 
-                {/* Contact Card (Manager) */}
-                {manager && (
-                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-100 rounded-xl p-4 flex items-center gap-4 text-left max-w-md mx-auto md:mx-0 shadow-sm hover:shadow-md transition">
-                        <div className="w-12 h-12 bg-white text-green-600 rounded-full flex items-center justify-center text-xl shadow-sm border border-green-100 shrink-0">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
-                        </div>
-                        <div className="min-w-0">
-                            <p className="text-[10px] text-green-800 font-bold uppercase tracking-widest mb-0.5">Manager Tim</p>
-                            <p className="font-bold text-gray-900 truncate mb-1">{manager.full_name}</p>
-                            <a 
-                                href={`https://wa.me/${manager.whatsapp_number}`} 
-                                target="_blank"
-                                className="inline-flex items-center gap-1 text-xs font-bold text-white bg-green-600 hover:bg-green-700 px-3 py-1 rounded-full transition"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
-                                Chat WhatsApp
-                            </a>
-                        </div>
-                    </div>
-                )}
+                {/* Tampilkan Card Manager HANYA jika data manager sudah ter-load */}
+{manager && (
+    <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-100 rounded-xl p-4 flex items-center gap-4 text-left max-w-md mx-auto md:mx-0 shadow-sm hover:shadow-md transition">
+        
+        {/* Avatar Manager */}
+        <div className="w-12 h-12 bg-white text-green-600 rounded-full flex items-center justify-center text-xl shadow-sm border border-green-100 shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        </div>
+
+        <div className="min-w-0">
+            <p className="text-[10px] text-green-800 font-bold uppercase tracking-widest mb-0.5">Manager Tim</p>
+            
+            {/* Nama Manager */}
+            <p className="font-bold text-gray-900 truncate mb-1">
+                {manager.full_name || 'Tanpa Nama'}
+            </p>
+
+            {/* Tombol WA */}
+            <a 
+                // Pastikan manager.whatsapp_number sudah diformat di logic fetch di atas
+                href={`https://wa.me/${manager.whatsapp_number}`} 
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs font-bold text-white bg-green-600 hover:bg-green-700 px-3 py-1 rounded-full transition shadow-sm"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+                Chat WhatsApp
+            </a>
+        </div>
+    </div>
+)}
             </div>
         </div>
 
