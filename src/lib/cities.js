@@ -13,6 +13,9 @@ export const CITIES = [
   "Balikpapan",
   "Denpasar",
   "Yogyakarta",
-  "Malang"
+  "Malang",
+  "Putussibau",
+  "Sintang",
+  "Singkawang",
   // Tambahkan kota lain sesuai kebutuhan
 ].sort(); // Otomatis urut abjad

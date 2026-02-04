@@ -13,7 +13,15 @@ export default function MatchDetail() {
   const [loading, setLoading] = useState(true)
   const [managerPhone, setManagerPhone] = useState('') 
 
+  const [notification, setNotification] = useState(null)
+  const [currentUser, setCurrentUser] = useState(null) // <--- INI SOLUSINYA
+  const [previewImage, setPreviewImage] = useState(null) // Untuk Lightbox
+
   useEffect(() => {
+    const fetchCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      setCurrentUser(user)
+    }
     if (id) fetchMatchDetail()
   }, [id])
 
@@ -66,12 +74,48 @@ export default function MatchDetail() {
   }
 
   const handleContactWA = () => {
-      if (!managerPhone) return alert("Nomor WA belum diatur oleh pemilik tim.")
+      // 1. Cek Ketersediaan Nomor
+      if (!managerPhone) {
+          setNotification({
+             type: 'error', // Supaya warnanya merah
+             title: 'Nomor Tidak Tersedia',
+             message: 'Maaf, nomor WhatsApp manager tim ini belum diatur oleh pemiliknya.'
+          })
+          return
+      }
       
-      // SAYA TAMBAHKAN JAM DI SINI:
-      const message = `Halo ${match.teams.name}, saya lihat jadwal sparring tanggal ${match.play_date} jam ${match.play_time.slice(0, 5)} WIB di ${match.location_name}. Masih open slot?`
+      // 2. AUTO-FORMAT NOMOR HP (Penting!)
+      // Mengubah '0812...' menjadi '62812...' agar link WA berfungsi
+      let phone = managerPhone.toString().trim()
       
-      const url = `https://wa.me/${managerPhone}?text=${encodeURIComponent(message)}`
+      // Hapus karakter non-angka (jika user iseng nulis "0812-3456")
+      phone = phone.replace(/\D/g, '')
+
+      if (phone.startsWith('0')) {
+          phone = '62' + phone.slice(1)
+      }
+
+      // 3. SUSUN PESAN YANG LEBIH RAPI & LENGKAP
+      // Gunakan \n untuk enter (baris baru)
+      let message = `Halo Manager Tim *${match.teams.name}*! 👋\n\n`
+      message += `Saya melihat jadwal sparring Anda di aplikasi:\n`
+      message += `📅 Tanggal: *${match.play_date}*\n`
+      message += `⏰ Jam: *${match.play_time.slice(0, 5)} WIB*\n`
+      message += `📍 Lokasi: ${match.location_name}\n`
+      
+      // Tambahkan detail sistem bayar biar jelas di awal
+      const feeLabel = match.fee_type === 'Split' ? 'Patungan (Split)' : match.fee_type === 'LoserPays' ? 'Kalah Bayar' : 'Host Bayar';
+      message += `💰 Sistem: ${feeLabel}\n\n`
+
+      // Jika ada deskripsi/catatan khusus, mention juga biar sopan
+      if (match.description) {
+         message += `Saya juga sudah membaca catatan: _"${match.description}"_\n\n`
+      }
+
+      message += `Apakah slot ini masih open? Kami berminat sparring. Terima kasih.`
+      
+      // 4. Buka WhatsApp
+      const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
       window.open(url, '_blank')
     }
 
@@ -87,6 +131,45 @@ export default function MatchDetail() {
     const waUrl = `https://wa.me/?text=${encodeURIComponent(text)}`
     window.open(waUrl, '_blank')
   }
+
+  useEffect(() => {
+    const fetchMatchData = async () => {
+      try {
+        setLoading(true)
+        
+        // 1. AMBIL USER LOGIN (TAMBAHKAN INI)
+        const { data: { user } } = await supabase.auth.getUser()
+        setCurrentUser(user) // Simpan user ke state agar variabel 'currentUser' tidak error
+
+        // 2. Ambil Data Match
+        const { data, error } = await supabase
+          .from('matches')
+          .select('*, teams(*)') // Join ke tabel teams
+          .eq('id', id)
+          .single()
+
+        if (error) throw error
+        setMatch(data)
+
+        // 3. Ambil Nomor WA Manager
+        if (data.teams?.manager_id) {
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('whatsapp_number')
+                .eq('id', data.teams.manager_id)
+                .single()
+            setManagerPhone(profile?.whatsapp_number)
+        }
+
+      } catch (error) {
+        console.error("Error:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    if (id) fetchMatchData()
+  }, [id])
 
 // --- 1. MODERN LOADING SKELETON (Meniru bentuk halaman asli) ---
   if (loading) return (
@@ -133,6 +216,8 @@ export default function MatchDetail() {
       </div>
     </div>
   )
+
+  
 
   // --- 2. MODERN NOT FOUND STATE (Tanpa Emoji) ---
   if (!match) return (
@@ -210,6 +295,7 @@ export default function MatchDetail() {
                             <h2 className="text-xl md:text-2xl font-black text-gray-900 truncate group-hover:text-blue-600 transition">
                                 {match.teams?.name}
                             </h2>
+                            {/* TOMBOL EDIT (Hanya muncul jika milik sendiri) */}
                             <div className="flex flex-wrap items-center gap-2 mt-1">
                                 <span className="flex items-center gap-1 text-xs font-bold text-gray-500 bg-gray-100 px-2 py-1 rounded">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
@@ -225,6 +311,7 @@ export default function MatchDetail() {
                                 </span>
                             </div>
                         </div>
+                        
 
                         {/* Chevron Arrow */}
                         <div className="text-gray-300 group-hover:text-blue-500 group-hover:translate-x-1 transition">
@@ -261,7 +348,6 @@ export default function MatchDetail() {
                         }
                     </div>
                 </div>
-
                 {/* Biaya Card */}
                 <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100 flex flex-col justify-between">
                     <div>
@@ -278,6 +364,56 @@ export default function MatchDetail() {
                     </p>
                 </div>
             </div>
+
+
+            <div>
+                {/* TAMPILKAN DESKRIPSI JIKA ADA */}
+                        {match.description && (
+                            <div className="bg-yellow-50 border border-yellow-100 p-4 rounded-xl mt-4">
+                                <h3 className="text-xs font-bold text-yellow-700 uppercase mb-1 flex items-center gap-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                                    Catatan Manager
+                                </h3>
+                                <p className="text-gray-700 text-sm whitespace-pre-line italic">
+                                    "{match.description}"
+                                </p>
+                            </div>
+                        )}
+            </div>
+
+                        {/* --- AREA PRIVASI: BUKTI BOOKING (HANYA DILIHAT PEMILIK) --- */}
+            {currentUser && currentUser.id === match.user_id && match.is_venue_booked && match.booking_proof_url && (
+                <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+                    <div className="flex items-start gap-3">
+                        <div className="bg-yellow-100 text-yellow-700 p-2 rounded-lg">
+                            {/* Icon Lock / Gembok */}
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                        </div>
+                        <div className="flex-1">
+                            <h3 className="font-bold text-gray-900 text-sm mb-1">Bukti Booking Lapangan</h3>
+                            <p className="text-xs text-gray-600 mb-3">
+                                Foto ini bersifat <strong>RAHASIA</strong> dan hanya terlihat oleh Anda (Manager), tidak oleh user lain.
+                            </p>
+                            
+                            {/* Preview Gambar Kecil */}
+                            <div 
+                                className="relative w-full h-40 bg-gray-200 rounded-lg overflow-hidden cursor-zoom-in border border-yellow-300 shadow-sm group"
+                                onClick={() => setPreviewImage(match.booking_proof_url)} // Pastikan state previewImage ada
+                            >
+                                <img 
+                                    src={match.booking_proof_url} 
+                                    alt="Bukti Booking" 
+                                    className="w-full h-full object-cover group-hover:scale-105 transition"
+                                />
+                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition flex items-center justify-center">
+                                    <span className="bg-black/50 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition">Klik untuk memperbesar</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
 
             {/* 3. TOMBOL AKSI */}
             <div className="pt-4 space-y-3">
@@ -308,6 +444,58 @@ export default function MatchDetail() {
 
         </div>
       </div>
+    
+    {/* --- MODAL NOTIFIKASI (MODERN UI) --- */}
+            {notification && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity animate-fade-in">
+                
+                <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 transform transition-all scale-100 flex flex-col items-center text-center">
+                    
+                    {/* ICON ERROR (Silang Merah) */}
+                    <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mb-5">
+                        <div className="w-12 h-12 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg shadow-red-200">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </div>
+                    </div>
+
+                    {/* TEKS PESAN */}
+                    <h3 className="text-xl font-black text-red-600 mb-2">
+                        {notification.title}
+                    </h3>
+                    <p className="text-gray-500 text-sm leading-relaxed mb-8">
+                        {notification.message}
+                    </p>
+
+                    {/* TOMBOL TUTUP */}
+                    <button 
+                        onClick={() => setNotification(null)}
+                        className="w-full py-3.5 rounded-xl font-bold text-white transition shadow-lg transform active:scale-95 bg-red-600 hover:bg-red-700 shadow-red-200"
+                    >
+                        Oke, Mengerti
+                    </button>
+
+                </div>
+                </div>
+            )}
+
+                {previewImage && (
+        <div 
+            className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 cursor-pointer animate-fade-in"
+            onClick={() => setPreviewImage(null)}
+        >
+            <div className="relative max-w-5xl w-full h-full flex items-center justify-center">
+                <img 
+                    src={previewImage} 
+                    alt="Full Preview" 
+                    className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
+                />
+                <button className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white p-2 rounded-full transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+        </div>
+    )}
+
     </div>
   )
 }

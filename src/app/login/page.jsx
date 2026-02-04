@@ -10,6 +10,8 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false) // Fitur lihat password
+
+  const [notification, setNotification] = useState(null)
   
   // State Mode: Login vs Daftar
   const [isLoginMode, setIsLoginMode] = useState(true)
@@ -17,6 +19,7 @@ export default function LoginPage() {
   const handleAuth = async (e) => {
     e.preventDefault()
     setLoading(true)
+    setNotification(null) // Reset notifikasi sebelumnya (jika ada)
 
     try {
       if (isLoginMode) {
@@ -26,7 +29,10 @@ export default function LoginPage() {
           password,
         })
         if (error) throw error
+        
+        // Login Sukses -> Langsung Redirect (Tidak perlu pop up biar cepat)
         router.push('/dashboard') 
+
       } else {
         // --- DAFTAR ---
         const { data, error } = await supabase.auth.signUp({
@@ -34,11 +40,24 @@ export default function LoginPage() {
           password,
         })
         if (error) throw error
-        alert('Akun berhasil dibuat! Silakan cek email atau login langsung.')
-        router.push('/dashboard')
+        
+        // Daftar Sukses -> Tampilkan Pop-up Sukses
+        setNotification({
+            type: 'success',
+            title: 'Pendaftaran Berhasil! 🚀',
+            message: 'Akun Anda telah dibuat. Silakan cek email untuk verifikasi atau login langsung.'
+        })
+        
+        // Opsional: Redirect otomatis setelah beberapa detik jika mau
+        // setTimeout(() => router.push('/dashboard'), 2000)
       }
     } catch (error) {
-      alert('Gagal: ' + error.message)
+      // Error (Login/Daftar) -> Tampilkan Pop-up Error
+      setNotification({
+        type: 'error',
+        title: 'Gagal Masuk',
+        message: error.message || 'Terjadi kesalahan pada sistem.'
+      })
     } finally {
       setLoading(false)
     }
@@ -189,6 +208,56 @@ export default function LoginPage() {
 
         </div>
       </div>
+
+    {/* --- MODAL NOTIFIKASI (MODERN UI) --- */}
+      {notification && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity animate-fade-in">
+           
+           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 transform transition-all scale-100 flex flex-col items-center text-center">
+              
+              {/* ICON DINAMIS */}
+              <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-5 ${notification.type === 'success' ? 'bg-green-50' : 'bg-red-50'}`}>
+                 {notification.type === 'success' ? (
+                    // ICON SUKSES (Checklist)
+                    <div className="w-12 h-12 bg-green-500 text-white rounded-full flex items-center justify-center shadow-lg shadow-green-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    </div>
+                 ) : (
+                    // ICON ERROR (Silang)
+                    <div className="w-12 h-12 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg shadow-red-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </div>
+                 )}
+              </div>
+
+              {/* TEKS PESAN */}
+              <h3 className={`text-xl font-black mb-2 ${notification.type === 'success' ? 'text-gray-900' : 'text-red-600'}`}>
+                 {notification.title}
+              </h3>
+              <p className="text-gray-500 text-sm leading-relaxed mb-8">
+                 {notification.message}
+              </p>
+
+              {/* TOMBOL AKSI */}
+              <button 
+                 onClick={() => {
+                     setNotification(null)
+                     // Jika sukses daftar, arahkan ke dashboard saat ditutup
+                     if (notification.type === 'success') router.push('/dashboard')
+                 }}
+                 className={`w-full py-3.5 rounded-xl font-bold text-white transition shadow-lg transform active:scale-95 ${
+                    notification.type === 'success' 
+                    ? 'bg-green-600 hover:bg-green-700 shadow-green-200' 
+                    : 'bg-red-600 hover:bg-red-700 shadow-red-200'
+                 }`}
+              >
+                 {notification.type === 'success' ? 'Lanjut ke Dashboard' : 'Coba Lagi'}
+              </button>
+
+           </div>
+        </div>
+      )}
+
     </div>
   )
 }

@@ -50,7 +50,7 @@ export default function Home() {
     : matches.filter(match => match.teams.city === selectedCity)
 
   return (
-    <main className="min-h-screen bg-gray-50 pb-20">
+    <main className="min-h-screen bg-gray-50 pb-20 pt-16">
       
       {/* --- HERO SECTION (BANNER) --- */}
       {/* Bagian ini menggantikan header lama */}
@@ -326,8 +326,9 @@ export default function Home() {
                     <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4">Hubungi Kami</h3>
                     <div className="space-y-4">
                         {/* Tombol WA Admin */}
-                        <a 
-                            href="https://wa.me/6281234567890" // GANTI DENGAN NOMOR ANDA
+                         <a 
+                            // Mengambil dari environment variable
+                            href={`https://wa.me/${process.env.NEXT_PUBLIC_ADMIN_WA}`} 
                             target="_blank"
                             className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 hover:border-green-500 hover:bg-green-50 transition group"
                         >
