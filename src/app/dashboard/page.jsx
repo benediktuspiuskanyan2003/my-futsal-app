@@ -23,11 +23,38 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('active') // Default ke 'active'  
 
   const [notification, setNotification] = useState(null)
+  const [showLogoutModal, setShowLogoutModal] = useState(false)
+
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleteTargetId, setDeleteTargetId] = useState(null)
+
+  const [showMarkDoneModal, setShowMarkDoneModal] = useState(false)
+  const [targetMatchId, setTargetMatchId] = useState(null)
+
+  // Fungsi ini dipanggil saat tombol TRASH diklik
+  const openDeleteModal = (matchId) => {
+      setDeleteTargetId(matchId) // Simpan ID-nya
+      setShowDeleteModal(true)   // Buka Modal
+  }
   
 
   useEffect(() => {
     fetchDashboardData()
   }, [])
+
+  // Cek Status Banned
+  const [isBanned, setIsBanned] = useState(false)
+
+  // Di dalam fetchProfile atau useEffect:
+  const checkBannedStatus = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if(user) {
+          const { data } = await supabase.from('profiles').select('is_banned').eq('id', user.id).single()
+          if (data?.is_banned) setIsBanned(true)
+      }
+  }
+  
+  // Panggil fungsi ini di useEffect
 
   const fetchDashboardData = async () => {
     try {
@@ -229,66 +256,87 @@ export default function Dashboard() {
     }
   }
 
-  const handleMarkAsDone = async (matchId) => {
-    const isConfirmed = window.confirm("Yakin sudah dapat lawan? Postingan ini akan dihapus dari halaman depan.")
-    if (!isConfirmed) return
+  // 1. Fungsi Pembuka Modal (Dipasang di Tombol)
+  const openMarkDoneModal = (matchId) => {
+      setTargetMatchId(matchId)
+      setShowMarkDoneModal(true)
+  }
+
+  // 2. Fungsi Eksekusi (Dipasang di Tombol "YA" pada Modal)
+  const handleMarkAsDone = async () => {
+    // Cek ID dulu
+    if (!targetMatchId) return
+
     try {
-      await supabase.from('matches').update({ status: 'Closed' }).eq('id', matchId)
-      fetchDashboardData()
+      const { error } = await supabase
+        .from('matches')
+        .update({ status: 'Closed' })
+        .eq('id', targetMatchId)
+
+      if (error) throw error
+
+      fetchDashboardData() // Refresh data
+
+      // Notifikasi Sukses
       setNotification({
         type: 'success',
-        title: 'Berhasil!',
-        message: 'Jadwal tanding telah ditandai selesai.'
+        title: 'Selamat! 🤝',
+        message: 'Postingan ditutup. Semoga pertandingannya seru!'
       })
+
     } catch (error) { 
         setNotification({
             type: 'error',
-            title: 'Ups, Gagal Update!',
+            title: 'Gagal Update',
             message: error.message
         })
+    } finally {
+        // Reset State & Tutup Modal
+        setShowMarkDoneModal(false)
+        setTargetMatchId(null)
     }
   }
 
-  const handleDelete = async (matchId) => {
-    // Konfirmasi standar browser dulu (atau mau buat modal konfirmasi terpisah juga bisa)
-    if (!confirm("Yakin ingin menghapus jadwal ini selamanya?")) return
+  const handleDelete = async () => {
+    // Tidak perlu confirm() lagi, karena sudah lewat modal
+    if (!deleteTargetId) return
 
     try {
-        // 1. Eksekusi Delete dan TANGKAP kembalian 'error'
         const { error } = await supabase
             .from('matches')
             .delete()
-            .eq('id', matchId)
+            .eq('id', deleteTargetId) // Pakai ID dari State
 
-        // 2. JIKA ADA ERROR DARI SUPABASE, LEMPAR KE CATCH
         if (error) throw error
 
-        // 3. Jika Sukses, Update UI
-        // Kita update state lokal saja biar cepat (tanpa fetch ulang)
-        setMyMatches((prev) => prev.filter((m) => m.id !== matchId))
+        // Update UI (Hapus dari list lokal)
+        setMyMatches((prev) => prev.filter((m) => m.id !== deleteTargetId))
 
-        // Tampilkan Notifikasi Sukses
         setNotification({
             type: 'success',
             title: 'Terhapus! 🗑️',
-            message: 'Jadwal pertandingan berhasil dihapus dari sistem.'
+            message: 'Jadwal pertandingan berhasil dihapus.'
         })
 
     } catch (error) {
-        // Tangkap error di sini
         setNotification({
             type: 'error',
             title: 'Gagal Hapus',
-            message: error.message || 'Terjadi kesalahan saat menghapus.'
+            message: error.message
         })
+    } finally {
+        // Tutup Modal & Reset ID
+        setShowDeleteModal(false)
+        setDeleteTargetId(null)
     }
   }
 
   const handleLogout = async () => { await supabase.auth.signOut(); router.push('/login') }
 
+
   // --- MODERN DASHBOARD SKELETON ---
   if (loading) return (
-    <div className="min-h-screen bg-gray-50 pt-24 pb-12 px-4 md:px-8 animate-pulse">
+    <div className="min-h-screen bg-gray-50 pt-24 pb-12 px-4 md:px-8 animate-pulse pt-16">
       <div className="max-w-4xl mx-auto space-y-6">
         
         {/* 1. SKELETON PROFIL TIM (HEADER) */}
@@ -344,6 +392,25 @@ export default function Dashboard() {
     </div>
   )
 
+  // JIKA USER KENA BANNED
+  if (isBanned) return (
+    <div className="min-h-screen bg-red-50 flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-24 h-24 bg-red-100 text-red-600 rounded-full flex items-center justify-center mb-6">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
+        </div>
+        <h1 className="text-3xl font-black text-gray-900 mb-2">Akun Dibekukan</h1>
+        <p className="text-gray-600 max-w-md mx-auto mb-8">
+            Akun Anda telah dinonaktifkan sementara karena melanggar Syarat & Ketentuan komunitas (Laporan Penipuan/Spam).
+        </p>
+        <button 
+            onClick={() => window.open(`https://wa.me/${process.env.NEXT_PUBLIC_ADMIN_WA}`, '_blank')}
+            className="bg-red-600 text-white font-bold py-3 px-8 rounded-xl shadow-lg hover:bg-red-700 transition"
+        >
+            Ajukan Banding ke Admin
+        </button>
+    </div>
+  )
+
   return (
     <div className="min-h-screen bg-gray-50 pt-24 pb-12 px-4 md:px-8">
       
@@ -378,7 +445,10 @@ export default function Dashboard() {
             </div>
           </div>
           
-          <button onClick={handleLogout} className="flex items-center gap-2 text-red-600 font-bold text-sm hover:bg-red-50 px-3 py-2 rounded-lg transition">
+          <button 
+            onClick={() => setShowLogoutModal(true)} // <--- GANTI JADI INI
+            className="flex items-center gap-2 text-red-600 font-bold text-sm hover:bg-red-50 px-3 py-2 rounded-lg transition"
+          >
             {/* Icon Logout Kecil */}
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
             Logout
@@ -532,7 +602,7 @@ export default function Dashboard() {
                                     onChange={(e) => setTeam({...team, skill_level: e.target.value})}
                                 >
                                     <option value="Fun">Fun / Hura-hura</option>
-                                    <option value="Intermediate">Menengah / Sparring Rutin</option>
+                                    <option value="Medium">Menengah / Sparring Rutin</option>
                                     <option value="Pro">Pro / Kompetitif</option>
                                 </select>
                                 
@@ -759,7 +829,7 @@ export default function Dashboard() {
                         {/* JIKA STATUS OPEN: Tampilkan Tombol Dapat Lawan & Edit */}
                         {m.status === 'Open' ? (
                             <>
-                                <button onClick={() => handleMarkAsDone(m.id)} className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition shadow-sm hover:shadow flex items-center justify-center gap-2">
+                                <button onClick={() => openMarkDoneModal(m.id)} className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition shadow-sm hover:shadow flex items-center justify-center gap-2">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                                     <span className="whitespace-nowrap">Dapat Lawan</span>
                                 </button>
@@ -768,14 +838,14 @@ export default function Dashboard() {
                                     <Link href={`/matches/${m.id}/edit`} className="w-10 h-10 flex items-center justify-center bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-100 rounded-xl transition" title="Edit">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                                     </Link>
-                                    <button onClick={() => handleDelete(m.id)} className="w-10 h-10 flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-600 border border-red-100 rounded-xl transition" title="Hapus">
+                                    <button onClick={() => openDeleteModal(m.id)} className="w-10 h-10 flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-600 border border-red-100 rounded-xl transition" title="Hapus">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                                     </button>
                                 </div>
                             </>
                         ) : (
                             // JIKA STATUS CLOSED: Hanya Tampilkan Hapus Riwayat
-                            <button onClick={() => handleDelete(m.id)} className="flex-1 border border-red-200 text-red-600 hover:bg-red-50 px-4 py-2.5 rounded-xl text-sm font-bold transition flex items-center justify-center gap-2">
+                            <button onClick={() => openDeleteModal(m.id)} className="flex-1 border border-red-200 text-red-600 hover:bg-red-50 px-4 py-2.5 rounded-xl text-sm font-bold transition flex items-center justify-center gap-2">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                                 Hapus Riwayat
                             </button>
@@ -832,6 +902,135 @@ export default function Dashboard() {
               >
                  Oke, Mengerti
               </button>
+
+           </div>
+        </div>
+      )}
+      {/* --- MODAL KONFIRMASI LOGOUT --- */}
+      {showLogoutModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity animate-fade-in">
+           
+           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 transform transition-all scale-100 flex flex-col items-center text-center">
+              
+              {/* Icon Pintu Keluar / Warning */}
+              <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mb-5">
+                 <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                 </div>
+              </div>
+
+              {/* Teks Konfirmasi */}
+              <h3 className="text-xl font-black text-gray-900 mb-2">
+                 Yakin ingin keluar?
+              </h3>
+              <p className="text-gray-500 text-sm leading-relaxed mb-8">
+                 Anda harus login kembali untuk mengakses akun dan jadwal pertandingan Anda.
+              </p>
+
+              {/* Tombol Aksi */}
+              <div className="flex gap-3 w-full">
+                 <button 
+                    onClick={() => setShowLogoutModal(false)}
+                    className="flex-1 py-3 rounded-xl font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition"
+                 >
+                    Batal
+                 </button>
+                 
+                 <button 
+                    onClick={() => {
+                        setShowLogoutModal(false)
+                        handleLogout() // <--- PANGGIL FUNGSI LOGOUT ASLI DISINI
+                    }}
+                    className="flex-1 py-3 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 shadow-lg shadow-red-200 transition"
+                 >
+                    Ya, Keluar
+                 </button>
+              </div>
+
+           </div>
+        </div>
+      )}
+
+      {/* --- MODAL KONFIRMASI HAPUS JADWAL --- */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity animate-fade-in">
+           
+           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 transform transition-all scale-100 flex flex-col items-center text-center">
+              
+              {/* Icon Sampah Besar */}
+              <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mb-5">
+                 <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center animate-pulse">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                 </div>
+              </div>
+
+              {/* Teks Konfirmasi */}
+              <h3 className="text-xl font-black text-gray-900 mb-2">
+                 Hapus Jadwal Ini?
+              </h3>
+              <p className="text-gray-500 text-sm leading-relaxed mb-8">
+                 Tindakan ini permanen. Jadwal yang dihapus tidak bisa dikembalikan lagi.
+              </p>
+
+              {/* Tombol Aksi */}
+              <div className="flex gap-3 w-full">
+                 <button 
+                    onClick={() => setShowDeleteModal(false)}
+                    className="flex-1 py-3.5 rounded-xl font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition"
+                 >
+                    Batal
+                 </button>
+                 
+                 <button 
+                    onClick={handleDelete} // Panggil fungsi eksekusi
+                    className="flex-1 py-3.5 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 shadow-lg shadow-red-200 transition transform active:scale-95"
+                 >
+                    Ya, Hapus
+                 </button>
+              </div>
+
+           </div>
+        </div>
+      )}
+
+      {/* --- MODAL KONFIRMASI DAPAT LAWAN --- */}
+      {showMarkDoneModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity animate-fade-in">
+           
+           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 transform transition-all scale-100 flex flex-col items-center text-center">
+              
+              {/* Icon Handshake / Deal / Check */}
+              <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mb-5">
+                 <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center shadow-sm">
+                    {/* Icon Handshake Sederhana (SVG) */}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
+                 </div>
+              </div>
+
+              {/* Teks Konfirmasi */}
+              <h3 className="text-xl font-black text-gray-900 mb-2">
+                 Sudah Dapat Lawan?
+              </h3>
+              <p className="text-gray-500 text-sm leading-relaxed mb-8">
+                 Wah mantap! Jika Anda klik "Ya", postingan ini akan <strong className="text-gray-800">dihapus dari halaman depan</strong> agar tidak ada orang lain yang menghubungi lagi.
+              </p>
+
+              {/* Tombol Aksi */}
+              <div className="flex gap-3 w-full">
+                 <button 
+                    onClick={() => setShowMarkDoneModal(false)}
+                    className="flex-1 py-3.5 rounded-xl font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition"
+                 >
+                    Belum
+                 </button>
+                 
+                 <button 
+                    onClick={handleMarkAsDone} // Panggil fungsi eksekusi
+                    className="flex-1 py-3.5 rounded-xl font-bold text-white bg-green-600 hover:bg-green-700 shadow-lg shadow-green-200 transition transform active:scale-95 flex items-center justify-center gap-2"
+                 >
+                    Ya, Deal! 🤝
+                 </button>
+              </div>
 
            </div>
         </div>

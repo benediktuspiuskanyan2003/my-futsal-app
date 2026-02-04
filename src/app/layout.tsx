@@ -1,6 +1,7 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import Navbar from "../components/Navbar"; // <--- 1. Import Navbar
+import Navbar from "../components/Navbar";
+import Footer from "../components/Footer"; // Pastikan file src/components/Footer.jsx sudah dibuat
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata = {
   title: "Futsal Sparring App",
-  description: "Cari lawan futsal di kotamu",
+  description: "Cari lawan futsal di kotamu dengan mudah.",
 };
 
 export default function RootLayout({
@@ -24,12 +25,28 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      {/* SETUP LAYOUT UTAMA (Sticky Footer):
+        - flex flex-col: Mengatur elemen jadi vertikal.
+        - min-h-screen: Tinggi minimal body = 100% tinggi layar.
+      */}
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`}
+      >
         
-        {/* 2. PASANG NAVBAR DI SINI (Di atas children) */}
+        {/* 1. Navbar (Selalu di atas) */}
         <Navbar />
+
+        {/* 2. Konten Utama (Main)
+            - flex-1: Mengambil sisa ruang kosong agar Footer terdorong ke bawah.
+            - bg-gray-50: Warna background dasar aplikasi (abu-abu tipis).
+        */}
+        <main className="flex-1 bg-gray-50">
+          {children}
+        </main>
+
+        {/* 3. Footer (Selalu di bawah) */}
+        <Footer />
         
-        {children}
       </body>
     </html>
   );

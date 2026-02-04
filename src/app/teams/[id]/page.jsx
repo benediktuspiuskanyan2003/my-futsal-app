@@ -96,7 +96,7 @@ export default function PublicTeamProfile() {
   )
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
+    <div className="min-h-screen bg-gray-50 pb-24 pt-20">
       
       {/* --- LIGHTBOX (POPUP GAMBAR) --- */}
       {previewImage && (

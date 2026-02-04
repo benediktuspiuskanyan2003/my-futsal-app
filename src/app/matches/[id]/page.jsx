@@ -25,6 +25,54 @@ export default function MatchDetail() {
     if (id) fetchMatchDetail()
   }, [id])
 
+  if (match && match.is_deleted) {
+      return (
+        <div className="min-h-screen bg-gray-50 pb-20 pt-24 px-4">
+            <div className="max-w-xl mx-auto bg-white rounded-2xl shadow-xl border-2 border-red-100 overflow-hidden">
+                
+                {/* Header Merah */}
+                <div className="bg-red-50 p-6 text-center border-b border-red-100">
+                    <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                    </div>
+                    <h1 className="text-2xl font-black text-gray-900 mb-2">Postingan Dihapus</h1>
+                    <p className="text-gray-600 text-sm">
+                        Pemilik telah menghapus postingan ini. Informasi detail pertandingan tidak lagi tersedia untuk publik.
+                    </p>
+                </div>
+
+                {/* AREA LAPOR (TETAP MUNCUL!) */}
+                <div className="p-6 bg-white">
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
+                        <h3 className="font-bold text-yellow-800 text-sm mb-1">Merasa Ditipu?</h3>
+                        <p className="text-xs text-yellow-700">
+                            Jika Anda diarahkan ke sini setelah bertransaksi atau merasa ada indikasi penipuan, Anda tetap bisa melaporkan akun ini kepada Admin.
+                        </p>
+                    </div>
+
+                    {/* Tombol Lapor */}
+                    <button
+                        onClick={() => {
+                            const adminPhone = process.env.NEXT_PUBLIC_ADMIN_WA || '6281234567890'
+                            // Kita kirim ID Match nya juga supaya Admin bisa cek di database
+                            const reason = `Halo Admin, Lapor PENIPUAN. \nUser ini menghapus postingan setelah transaksi.\n\nMatch ID: ${match.id} \nNama Tim: ${match.teams?.name} \n\nMohon tindak lanjut.`
+                            window.open(`https://wa.me/${adminPhone}?text=${encodeURIComponent(reason)}`, '_blank')
+                        }}
+                        className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-xl shadow transition flex items-center justify-center gap-2"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                        Laporkan Pemilik Postingan
+                    </button>
+                    
+                    <div className="mt-4 text-center">
+                         <Link href="/" className="text-gray-400 text-sm hover:text-gray-600">Kembali ke Beranda</Link>
+                    </div>
+                </div>
+            </div>
+        </div>
+      )
+  }
+
   const fetchMatchDetail = async () => {
     try {
       setLoading(true)
@@ -243,6 +291,12 @@ export default function MatchDetail() {
     </div>
   )
 
+  const handleReport = () => {
+      const adminPhone = process.env.NEXT_PUBLIC_ADMIN_WA || '6281234567890' 
+      const reason = `Halo Admin, saya ingin melaporkan postingan mencurigakan ini: \n\nLink: ${window.location.href} \n\nMohon dicek.`
+      window.open(`https://wa.me/${adminPhone}?text=${encodeURIComponent(reason)}`, '_blank')
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 pt-24 pb-12 px-4 md:px-10 flex justify-center items-start">
         
@@ -418,7 +472,7 @@ export default function MatchDetail() {
             {/* 3. TOMBOL AKSI */}
             <div className="pt-4 space-y-3">
                 
-                {/* Hubungi WhatsApp */}
+                {/* Hubungi WhatsApp (Primary) */}
                 <button 
                     onClick={handleContactWA}
                     className="group w-full bg-[#25D366] hover:bg-[#20bd5a] text-white text-lg font-bold py-4 px-6 rounded-xl shadow-lg shadow-green-200 transition-all transform active:scale-95 flex items-center justify-center gap-3"
@@ -427,7 +481,7 @@ export default function MatchDetail() {
                     Hubungi Lawan
                 </button>
                 
-                {/* Tombol Share */}
+                {/* Tombol Share (Secondary) */}
                 <button 
                     onClick={handleShare}
                     className="w-full bg-white border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700 text-lg font-bold py-3.5 px-6 rounded-xl transition flex items-center justify-center gap-2"
@@ -436,10 +490,23 @@ export default function MatchDetail() {
                     Bagikan
                 </button>
                 
-                <Link href="/" className="flex items-center justify-center gap-2 text-gray-400 font-bold hover:text-gray-900 py-4 transition text-sm">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-                    Cari lawan lain
-                </Link>
+                <div className="flex items-center justify-between pt-4 border-t border-gray-100 mt-6">
+                    {/* Link Kembali */}
+                    <Link href="/" className="flex items-center gap-2 text-gray-400 font-bold hover:text-gray-900 transition text-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                        Cari lawan lain
+                    </Link>
+
+                    {/* Tombol Laporkan (Security Layer) */}
+                    <button 
+                        onClick={handleReport}
+                        className="text-xs font-bold text-red-400 hover:text-red-600 hover:underline flex items-center gap-1 transition"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                        Lapor
+                    </button>
+                </div>
+
             </div>
 
         </div>
