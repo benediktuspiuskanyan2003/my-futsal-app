@@ -135,6 +135,13 @@ export default function LoginPage() {
                     </div>
                 </div>
 
+                {/* TAMBAHKAN INI: Link Lupa Password */}
+                <div className="flex justify-end">
+                    <Link href="/forgot-password" className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition">
+                        Lupa Password?
+                    </Link>
+                </div>
+
                 {/* Tombol Login */}
                 <button
                     type="submit"
