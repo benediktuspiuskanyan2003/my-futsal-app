@@ -14,6 +14,7 @@ export default function PublicTeamProfile() {
   const [loading, setLoading] = useState(true)
   const [manager, setManager] = useState(null)
   
+  
   // State untuk Lightbox (Preview Gambar Fullscreen)
   const [previewImage, setPreviewImage] = useState(null)
 
@@ -42,7 +43,21 @@ export default function PublicTeamProfile() {
           .select('*')
           .eq('id', teamData.manager_id)
           .single()
-        setManager(profileData)
+        if (profileData) {
+            let cleanNumber = profileData.whatsapp_number || ''
+            
+            // Hapus karakter non-angka (spasi, strip, dll)
+            cleanNumber = cleanNumber.replace(/\D/g, '')
+            if (cleanNumber.startsWith('0')) {
+                cleanNumber = '62' + cleanNumber.slice(1)
+            } else if (!cleanNumber.startsWith('62')) {
+                cleanNumber = '62' + cleanNumber
+            }
+            setManager({
+                ...profileData,
+                whatsapp_number: cleanNumber
+            })
+        }
       }
 
       // 3. Ambil Jadwal Tim Ini
