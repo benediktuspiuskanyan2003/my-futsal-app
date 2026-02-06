@@ -30,6 +30,38 @@ export default function CreateMatch() {
     new_team_city: ''
   })
 
+  const getTodayString = () => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+};
+
+const validateTime = (e) => {
+    const selectedTime = e.target.value;
+    const selectedDate = formData.play_date;
+    const today = getTodayString();
+
+    // Cek: Jika Tanggal yang dipilih adalah HARI INI
+    if (selectedDate === today) {
+        const now = new Date();
+        const currentHour = now.getHours();
+        const currentMinute = now.getMinutes();
+        
+        const [selHour, selMinute] = selectedTime.split(':').map(Number);
+
+        // Jika jam yang dipilih LEBIH KECIL dari jam sekarang
+        if (selHour < currentHour || (selHour === currentHour && selMinute < currentMinute)) {
+            alert("Jam main tidak boleh di masa lalu! ⏰");
+            // Reset input time
+            e.target.value = ''; 
+            setFormData({...formData, play_time: ''});
+            return;
+        }
+    }
+    
+    // Jika lolos validasi, simpan data
+    setFormData({...formData, play_time: selectedTime});
+};
+
   // --- STATE BARU: BOOKING & UPLOAD ---
   const [isVenueBooked, setIsVenueBooked] = useState(false) // Default: Belum Booking
   const [proofFile, setProofFile] = useState(null)          // File Gambar
@@ -255,19 +287,41 @@ export default function CreateMatch() {
 
           {/* --- BAGIAN 2: DETAIL JADWAL --- */}
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Tanggal Main</label>
-              <input name="play_date" type="date" required className="w-full p-3 border border-gray-200 rounded-xl font-medium focus:ring-2 focus:ring-blue-500 outline-none" 
-                onChange={(e) => setFormData({...formData, play_date: e.target.value})}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Jam Main</label>
-              <input name="play_time" type="time" required className="w-full p-3 border border-gray-200 rounded-xl font-medium focus:ring-2 focus:ring-blue-500 outline-none"
-                onChange={(e) => setFormData({...formData, play_time: e.target.value})}
-              />
-            </div>
-          </div>
+        
+        {/* INPUT TANGGAL */}
+        <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Tanggal Main</label>
+            <input 
+                name="play_date" 
+                type="date" 
+                required 
+                // FITUR 1: Atribut 'min' mencegah pilih tanggal kemarin
+                min={getTodayString()} 
+                className="w-full p-3 border border-gray-200 rounded-xl font-medium focus:ring-2 focus:ring-blue-500 outline-none" 
+                onChange={(e) => {
+                    // Jika tanggal berubah, reset jam dulu biar user isi ulang (opsional, tapi aman)
+                    setFormData({...formData, play_date: e.target.value, play_time: ''})
+                }}
+            />
+        </div>
+
+        {/* INPUT JAM */}
+        <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Jam Main</label>
+            <input 
+                name="play_time" 
+                type="time" 
+                required 
+                // FITUR 2: Disable jam jika tanggal belum dipilih
+                disabled={!formData.play_date} 
+                className={`w-full p-3 border border-gray-200 rounded-xl font-medium focus:ring-2 focus:ring-blue-500 outline-none ${!formData.play_date ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
+                // Value harus dikontrol agar bisa di-reset jika salah
+                value={formData.play_time || ''} 
+                onChange={validateTime} // Panggil fungsi validasi di sini
+            />
+        </div>
+        
+    </div>
 
           <div>
             <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Lokasi Lapangan</label>
@@ -351,7 +405,6 @@ export default function CreateMatch() {
               </div>
           )}
 
-          {/* --- BAGIAN 4: SISTEM BAYAR --- */}
           {/* --- BAGIAN 4: SISTEM BAYAR (MODERN CARDS) --- */}
           <div>
             <label className="block text-xs font-bold text-gray-500 uppercase mb-3">Sistem Pembayaran</label>

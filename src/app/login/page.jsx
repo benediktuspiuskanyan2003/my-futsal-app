@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
+
 export default function LoginPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
