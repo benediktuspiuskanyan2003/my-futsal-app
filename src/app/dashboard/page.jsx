@@ -304,7 +304,10 @@ export default function Dashboard() {
     try {
         const { error } = await supabase
             .from('matches')
-            .update({ is_deleted: true })
+            .update({ 
+                is_deleted: true,
+            deleted_at: new Date().toISOString()
+         })
             .eq('id', deleteTargetId) // Pakai ID dari State
 
         if (error) throw error
@@ -812,13 +815,17 @@ export default function Dashboard() {
           
           {/* LOGIKA PEMISAHAN DATA */}
           {(() => {
-            // Filter data berdasarkan Tab yang dipilih
-            const displayedMatches = activeTab === 'active' 
-                ? myMatches.filter(m => m.status === 'Open')
-                : myMatches.filter(m => m.status === 'Closed');
+            // 1. FILTER LOGIC YANG DIPERBARUI
+            // Tab Aktif: Hanya yang status Open DAN TIDAK dihapus
+            const activeMatches = myMatches.filter(m => m.status === 'Open' && !m.is_deleted);
+            
+            // Tab Riwayat: Yang status Closed ATAU yang sudah Dihapus (Soft Delete)
+            const historyMatches = myMatches.filter(m => m.status === 'Closed' || m.is_deleted);
 
+            const displayedMatches = activeTab === 'active' ? activeMatches : historyMatches;
+
+            // --- TAMPILAN KOSONG (EMPTY STATE) ---
             if (displayedMatches.length === 0) {
-                // --- TAMPILAN KOSONG (EMPTY STATE) ---
                 return (
                     <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center">
                         <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4 shadow-sm text-gray-300">
@@ -835,7 +842,6 @@ export default function Dashboard() {
                             {activeTab === 'active' ? 'Buat jadwal sekarang untuk mencari lawan.' : 'Selesaikan pertandingan untuk melihat riwayat.'}
                         </p>
                         
-                        {/* Tombol Buat Baru (Hanya muncul di Tab Aktif) */}
                         {activeTab === 'active' && (
                             <Link href="/matches/create" className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm font-bold transition flex items-center gap-2">
                                 + Buat Jadwal Baru
@@ -845,48 +851,83 @@ export default function Dashboard() {
                 )
             }
 
-            // --- TAMPILAN LIST (SAMA SEPERTI SEBELUMNYA) ---
+            // --- TAMPILAN LIST ---
             return (
                 <div className="grid gap-4">
-                  {displayedMatches.map((m) => (
-                    <div key={m.id} className={`group relative border p-5 rounded-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6 transition hover:shadow-md ${m.status === 'Closed' ? 'bg-gray-50 border-gray-200 opacity-75' : 'bg-white border-gray-200'}`}>
-                      
-                      {/* Info Kiri */}
-                      <div>
+                    {displayedMatches.map((m) => (
+                    <div key={m.id} 
+                        className={`group relative border p-5 rounded-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6 transition hover:shadow-md 
+                        ${m.is_deleted 
+                            ? 'bg-red-50 border-red-200' // Tampilan Merah untuk Dihapus
+                            : m.status === 'Closed' 
+                                ? 'bg-gray-50 border-gray-200 opacity-75' 
+                                : 'bg-white border-gray-200'
+                        }`}
+                    >
+                        
+                        {/* Info Kiri */}
+                        <div>
                         <div className="flex items-center gap-3 mb-2">
-                          <div className="flex items-center gap-2 text-gray-900">
-                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-600"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                             <span className="font-bold text-lg">{m.play_date}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 bg-gray-100 px-2 py-1 rounded text-sm font-medium text-gray-600">
-                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                             {m.play_time.slice(0,5)} WIB
-                          </div>
+                            <div className={`flex items-center gap-2 ${m.is_deleted ? 'text-red-800' : 'text-gray-900'}`}>
+                                {/* Icon Kalender berubah merah jika dihapus */}
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={m.is_deleted ? 'text-red-500' : 'text-blue-600'}>
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
+                                </svg>
+                                <span className="font-bold text-lg">{m.play_date}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 bg-gray-100 px-2 py-1 rounded text-sm font-medium text-gray-600">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                                {m.play_time.slice(0,5)} WIB
+                            </div>
                         </div>
+                        
                         <p className="text-sm text-gray-500 flex items-center gap-1.5 mb-3">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
                             {m.location_name}
                         </p>
-                        <div>
-                          {m.status === 'Open' ? (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 border border-green-200">
-                              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                              Open / Tayang
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-gray-200 text-gray-600 border border-gray-300">
-                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                              Selesai / Dapat Lawan
-                            </span>
-                          )}
-                        </div>
-                      </div>
 
-                      {/* Tombol Aksi */}
-                      <div className="flex flex-row items-center gap-2 w-full md:w-auto mt-4 md:mt-0 pt-4 md:pt-0 border-t md:border-t-0 border-gray-100">
+                        {/* STATUS BADGE */}
+                        <div>
+                            {m.is_deleted ? (
+                                // BADGE: DIHAPUS
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 border border-red-200">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                    Dibatalkan / Dihapus
+                                </span>
+                            ) : m.status === 'Open' ? (
+                                // BADGE: OPEN
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 border border-green-200">
+                                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                                    Open / Tayang
+                                </span>
+                            ) : (
+                                // BADGE: SELESAI
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-gray-200 text-gray-600 border border-gray-300">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                    Selesai / Dapat Lawan
+                                </span>
+                            )}
+                        </div>
                         
-                        {/* JIKA STATUS OPEN: Tampilkan Tombol Dapat Lawan & Edit */}
-                        {m.status === 'Open' ? (
+                        {/* Countdown Penghapusan Otomatis (Opsional) */}
+                        {m.is_deleted && m.deleted_at && (
+                            <p className="text-[10px] text-red-500 mt-2 italic flex items-center gap-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                                Hapus permanen otomatis: {new Date(new Date(m.deleted_at).getTime() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                            </p>
+                        )}
+                        </div>
+
+                        {/* Tombol Aksi */}
+                        <div className="flex flex-row items-center gap-2 w-full md:w-auto mt-4 md:mt-0 pt-4 md:pt-0 border-t md:border-t-0 border-gray-100">
+                        
+                        {/* LOGIKA TOMBOL:
+                            1. Jika Deleted: Tampilkan tombol Hapus Permanen (Opsional, atau biarkan kosong)
+                            2. Jika Open: Tampilkan tombol lengkap (Dapat Lawan, Edit, Hapus)
+                            3. Jika Closed: Tampilkan tombol Hapus Riwayat
+                        */}
+
+                        {!m.is_deleted && m.status === 'Open' && (
                             <>
                                 <button onClick={() => openMarkDoneModal(m.id)} className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition shadow-sm hover:shadow flex items-center justify-center gap-2">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
@@ -902,21 +943,23 @@ export default function Dashboard() {
                                     </button>
                                 </div>
                             </>
-                        ) : (
-                            // JIKA STATUS CLOSED: Hanya Tampilkan Hapus Riwayat
+                        )}
+
+                        {/* Tombol untuk Riwayat (Closed ATAU Deleted) */}
+                        {(m.status === 'Closed' || m.is_deleted) && (
                             <button onClick={() => openDeleteModal(m.id)} className="flex-1 border border-red-200 text-red-600 hover:bg-red-50 px-4 py-2.5 rounded-xl text-sm font-bold transition flex items-center justify-center gap-2">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                                Hapus Riwayat
+                                {m.is_deleted ? 'Hapus Permanen' : 'Hapus Riwayat'}
                             </button>
                         )}
 
-                      </div>
+                        </div>
 
                     </div>
-                  ))}
+                    ))}
                 </div>
             )
-          })()}
+        })()}
         </div>
 
       </div>

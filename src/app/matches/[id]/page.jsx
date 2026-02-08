@@ -17,6 +17,8 @@ export default function MatchDetail() {
   const [currentUser, setCurrentUser] = useState(null) // <--- INI SOLUSINYA
   const [previewImage, setPreviewImage] = useState(null) // Untuk Lightbox
 
+  const [showContactModal, setShowContactModal] = useState(false);
+
   useEffect(() => {
     const fetchCurrentUser = async () => {
       const { data: { user } } = await supabase.auth.getUser()
@@ -473,28 +475,68 @@ export default function MatchDetail() {
             {/* 3. TOMBOL AKSI */}
             <div className="pt-4 space-y-3">
                 
-                {/* --- LOGIC PROTEKSI KONTAK --- */}
                 {currentUser ? (
-                    // KONDISI 1: USER SUDAH LOGIN (Boleh Klik)
+                // KONDISI 1: USER SUDAH LOGIN (Buka Modal Konfirmasi)
+                <>
                     <button 
-                        onClick={handleContactWA}
+                        onClick={() => setShowContactModal(true)} // Ubah ini: Buka Modal
                         className="group w-full bg-[#25D366] hover:bg-[#20bd5a] text-white text-lg font-bold py-4 px-6 rounded-xl shadow-lg shadow-green-200 transition-all transform active:scale-95 flex items-center justify-center gap-3"
                     >
                         <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.355-5.294 9.881 9.881 0 019.884-9.881 9.881 9.881 0 019.88 9.88 9.88 9.88 0 01-9.88 9.88M12 2C6.48 2 2 6.48 2 12c0 1.84.48 3.58 1.32 5.12L2.12 21.88l4.88-1.21C8.42 21.52 10.16 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2z"/></svg>
                         Hubungi Lawan
                     </button>
-                ) : (
-                    // KONDISI 2: USER BELUM LOGIN (Tombol Terkunci)
-                    <Link href="/login" className="block">
-                        <button 
-                            className="w-full bg-gray-100 text-gray-400 text-lg font-bold py-4 px-6 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center gap-3 cursor-pointer hover:bg-gray-200 hover:text-gray-600 transition"
-                        >
-                            {/* Icon Gembok */}
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                            Login untuk Hubungi
-                        </button>
-                    </Link>
-                )}
+
+                    {/* --- MODAL KONFIRMASI (Letakkan di sini agar tetap dalam fragment) --- */}
+                    {showContactModal && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+                            <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl transform transition-all scale-100 border border-gray-100">
+                                
+                                <div className="text-center mb-6">
+                                    <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+                                    </div>
+                                    <h3 className="text-xl font-black text-gray-900">Hubungi via WhatsApp?</h3>
+                                    <p className="text-gray-500 text-sm mt-2 leading-relaxed">
+                                        Pastikan Anda menggunakan bahasa yang sopan saat menghubungi calon lawan.
+                                    </p>
+                                </div>
+
+                                <div className="flex gap-3">
+                                    <button 
+                                        onClick={() => setShowContactModal(false)}
+                                        className="flex-1 py-3.5 rounded-xl font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition"
+                                    >
+                                        Batal
+                                    </button>
+                                    
+                                    {/* Tombol yang sebenarnya membuka WA */}
+                                    <button 
+                                        onClick={() => {
+                                            handleContactWA(); // Panggil fungsi WA asli di sini
+                                            setShowContactModal(false); // Tutup modal
+                                        }}
+                                        className="flex-1 py-3.5 rounded-xl font-bold text-white bg-[#25D366] hover:bg-[#20bd5a] transition flex items-center justify-center gap-2 shadow-lg shadow-green-200"
+                                    >
+                                        Lanjut Chat
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                                    </button>
+                                </div>
+
+                            </div>
+                        </div>
+                    )}
+                </>
+            ) : (
+                // KONDISI 2: USER BELUM LOGIN (Sama seperti sebelumnya)
+                <Link href="/login" className="block">
+                    <button 
+                        className="w-full bg-gray-100 text-gray-400 text-lg font-bold py-4 px-6 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center gap-3 cursor-pointer hover:bg-gray-200 hover:text-gray-600 transition"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                        Login untuk Hubungi
+                    </button>
+                </Link>
+            )}
                 
                 {/* Tombol Share (Secondary) - Biarkan tetap bisa diklik siapa saja */}
                 <button 

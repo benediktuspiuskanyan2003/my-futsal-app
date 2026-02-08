@@ -50,8 +50,8 @@ export default function RootLayout({ children }) {
         <Navbar />
 
         {/* 2. Konten Utama 
-            - flex-1: Isi ruang kosong.
-            - bg-gray-50: Warna dasar.
+            - flex-1: Isi ruan g kosong.
+            - bg-gray-50: Warnadasar.
             - pb-24: PENDING PENTING! Memberi jarak bawah di HP agar konten paling bawah 
                      tidak tertutup oleh Mobile Nav bar.
             - md:pb-0: Di laptop jarak bawahnya dinolkan (karena tidak ada Mobile Nav).

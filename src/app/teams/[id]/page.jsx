@@ -170,100 +170,136 @@ export default function PublicTeamProfile() {
       {/* --- KONTEN UTAMA --- */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 -mt-24 md:-mt-32 relative z-10">
         
-        {/* --- KARTU PROFIL UTAMA --- */}
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 md:p-8 flex flex-col md:flex-row gap-6 md:gap-10 items-center md:items-start text-center md:text-left">
+        {/* --- KARTU PROFIL UTAMA (MULAI DARI SINI) --- */}
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 md:p-8 flex flex-col md:flex-row gap-6 md:gap-10 items-center md:items-start text-center md:text-left relative">
             
-            {/* Logo Besar (Clickable) */}
+            {/* 1. TOMBOL LAPORKAN (REPORT BUTTON) */}
+            {/* Logika: Tampil jika user BELUM login (Guest) ATAU user SUDAH login tapi BUKAN pemilik tim */}
+            {(!currentUser || (currentUser && currentUser.id !== team.manager_id)) && (
+                <button 
+                    onClick={() => window.location.href = `mailto:admin@sparzone.id?subject=Laporan Tim: ${team.name} (ID: ${team.id})&body=Halo Admin, saya ingin melaporkan tim ${team.name} karena...`}
+                    className="absolute top-4 right-4 md:top-6 md:right-6 text-gray-300 hover:text-red-500 hover:bg-red-50 p-2 rounded-full transition-all group z-10"
+                    title="Laporkan Tim Ini"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
+                        <line x1="4" y1="22" x2="4" y2="15"></line>
+                    </svg>
+                    <span className="sr-only">Laporkan</span>
+                </button>
+            )}
+
+            {/* 2. LOGO TIM (BESAR) */}
             <div 
-                className="w-32 h-32 md:w-48 md:h-48 bg-white rounded-full p-2 shadow-xl -mt-20 md:-mt-28 flex-shrink-0 cursor-zoom-in transition hover:scale-105"
+                className="w-32 h-32 md:w-48 md:h-48 bg-white rounded-full p-2 shadow-xl -mt-20 md:-mt-28 flex-shrink-0 cursor-zoom-in transition hover:scale-105 relative z-0"
                 onClick={() => team.logo_url && setPreviewImage(team.logo_url)}
             >
                 <div className="w-full h-full bg-gray-50 rounded-full overflow-hidden flex items-center justify-center border-4 border-white relative shadow-inner">
                     {team.logo_url ? (
-                        <img src={team.logo_url} className="w-full h-full object-cover" alt="Logo" />
+                        <img src={team.logo_url} className="w-full h-full object-cover" alt={`Logo ${team.name}`} />
                     ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path>
+                            <path d="M2 12h20"></path>
+                        </svg>
                     )}
                 </div>
             </div>
 
-            {/* Info Tim */}
+            {/* 3. INFO TIM & MANAGER */}
             <div className="flex-1 w-full pt-2">
-                <h1 className="text-3xl md:text-5xl font-black text-gray-900 mb-4 tracking-tight">{team.name}</h1>
                 
-                {/* Badges (Full SVG) */}
+                {/* Nama Tim */}
+                <h1 className="text-3xl md:text-5xl font-black text-gray-900 mb-4 tracking-tight">
+                    {team.name}
+                </h1>
+                
+                {/* Badges (Kota, Homebase, Skill) */}
                 <div className="flex flex-wrap justify-center md:justify-start gap-3 mb-8">
                     
                     {/* Badge Kota */}
                     <div className="flex items-center gap-1.5 bg-gray-100 px-3 py-1.5 rounded-lg text-gray-700 text-sm font-bold border border-gray-200">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-500"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-500">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                            <circle cx="12" cy="10" r="3"></circle>
+                        </svg>
                         {team.city}
                     </div>
 
-                    {/* Badge Homebase */}
+                    {/* Badge Homebase (Jika ada) */}
                     {team.homebase && (
                         <div className="flex items-center gap-1.5 bg-gray-100 px-3 py-1.5 rounded-lg text-gray-700 text-sm font-bold border border-gray-200">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500">
+                                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                            </svg>
                             {team.homebase}
                         </div>
                     )}
 
-                    {/* Badge Skill */}
+                    {/* Badge Skill Level (Warna-warni sesuai level) */}
                     <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold border ${
                         team.skill_level === 'Pro' ? 'bg-purple-50 text-purple-700 border-purple-100' : 
                         team.skill_level === 'Intermediate' ? 'bg-blue-50 text-blue-700 border-blue-100' : 
                         'bg-yellow-50 text-yellow-700 border-yellow-100'
                     }`}>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                        </svg>
                         {team.skill_level || 'Fun'}
                     </div>
                 </div>
 
-                {/* Tampilkan Card Manager HANYA jika data manager sudah ter-load */}
-{manager && (
-    <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-100 rounded-xl p-4 flex items-center gap-4 text-left max-w-md mx-auto md:mx-0 shadow-sm hover:shadow-md transition">
-        
-        {/* Avatar Manager */}
-        <div className="w-12 h-12 bg-white text-green-600 rounded-full flex items-center justify-center text-xl shadow-sm border border-green-100 shrink-0">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-        </div>
+                {/* 4. KARTU MANAGER (KONTAK) */}
+                {manager && (
+                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-100 rounded-xl p-4 flex flex-col md:flex-row items-center md:items-start gap-4 text-left max-w-md mx-auto md:mx-0 shadow-sm hover:shadow-md transition">
+                        
+                        {/* Avatar Manager */}
+                        <div className="w-12 h-12 bg-white text-green-600 rounded-full flex items-center justify-center text-xl shadow-sm border border-green-100 shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="12" cy="7" r="4"></circle>
+                            </svg>
+                        </div>
 
-        <div className="min-w-0">
-            <p className="text-[10px] text-green-800 font-bold uppercase tracking-widest mb-0.5">Manager Tim</p>
-            
-            {/* Nama Manager */}
-            <p className="font-bold text-gray-900 truncate mb-1">
-                {manager.full_name || 'Tanpa Nama'}
-            </p>
+                        <div className="min-w-0 text-center md:text-left">
+                            <p className="text-[10px] text-green-800 font-bold uppercase tracking-widest mb-0.5">Manager Tim</p>
+                            
+                            {/* Nama Manager */}
+                            <p className="font-bold text-gray-900 truncate mb-2">
+                                {manager.full_name || 'Tanpa Nama'}
+                            </p>
 
-            {/* Tombol WA */}
-            {/* JIKA USER SUDAH LOGIN -> TAMPILKAN TOMBOL WA */}
-            {currentUser ? (
-                <a 
-                    href={`https://wa.me/${manager.whatsapp_number}`} 
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs font-bold text-white bg-green-600 hover:bg-green-700 px-3 py-1 rounded-full transition shadow-sm"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
-                    Chat WhatsApp
-                </a>
-            ) : (
-                // JIKA BELUM LOGIN -> TAMPILKAN TOMBOL LOGIN
-                <Link 
-                    href="/login"
-                    className="inline-flex items-center gap-1 text-xs font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-full transition"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                    Login Info
-                </Link>
-            )}
-        </div>
-    </div>
-)}
+                            {/* LOGIKA TOMBOL KONTAK */}
+                            {currentUser ? (
+                                // JIKA SUDAH LOGIN -> TAMPILKAN TOMBOL WA
+                                <a 
+                                    href={`https://wa.me/${manager.whatsapp_number}`} 
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 text-xs font-bold text-white bg-green-600 hover:bg-green-700 px-4 py-1.5 rounded-full transition shadow-sm"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+                                    Chat WhatsApp
+                                </a>
+                            ) : (
+                                // JIKA BELUM LOGIN -> TAMPILKAN TOMBOL LOGIN
+                                <Link 
+                                    href="/login"
+                                    className="inline-flex items-center gap-1 text-xs font-bold text-gray-500 bg-white border border-gray-200 hover:bg-gray-50 px-4 py-1.5 rounded-full transition"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                                    Login untuk Kontak
+                                </Link>
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
-
+        {/* --- SELESAI KARTU PROFIL --- */}
+        
         {/* --- DAFTAR JADWAL (CARD MODERN) --- */}
         <div className="mt-12">
             <div className="flex items-center gap-3 mb-8">
@@ -285,11 +321,19 @@ export default function PublicTeamProfile() {
                 <div className="grid gap-5 md:grid-cols-2">
                     {matches.map(m => (
                         <Link key={m.id} href={`/matches/${m.id}`}>
-                            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition group cursor-pointer h-full flex flex-col justify-between">
+                            <div className={`p-6 rounded-2xl border shadow-sm transition h-full flex flex-col justify-between relative overflow-hidden group cursor-pointer
+                                ${m.is_deleted || m.status === 'Closed'
+                                    ? 'bg-gray-50 border-gray-200' // Tampilan Netral (Abu-abu) untuk Dihapus/Closed
+                                    : 'bg-white border-gray-100 hover:shadow-xl hover:-translate-y-1' // Tampilan Aktif (Putih)
+                                }`}
+                            >
                                 <div>
                                     <div className="flex justify-between items-start mb-4">
                                         <div className="flex items-center gap-3">
-                                            <div className="bg-blue-50 text-blue-700 w-12 h-12 rounded-xl flex flex-col items-center justify-center border border-blue-100">
+                                            <div className={`w-12 h-12 rounded-xl flex flex-col items-center justify-center border 
+                                                ${(m.is_deleted || m.status === 'Closed') 
+                                                    ? 'bg-gray-100 text-gray-500 border-gray-200' 
+                                                    : 'bg-blue-50 text-blue-700 border-blue-100'}`}>
                                                 <span className="text-[10px] font-bold uppercase">{new Date(m.play_date).toLocaleString('default', { month: 'short' })}</span>
                                                 <span className="text-xl font-black leading-none">{new Date(m.play_date).getDate()}</span>
                                             </div>
@@ -299,14 +343,16 @@ export default function PublicTeamProfile() {
                                             </div>
                                         </div>
                                         
-                                        {m.status === 'Open' ? (
+                                        {/* Status Badge */}
+                                        {m.status === 'Open' && !m.is_deleted ? (
                                             <span className="bg-green-100 text-green-700 text-xs px-3 py-1 rounded-full font-bold flex items-center gap-1.5 border border-green-200">
                                                 <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
                                                 Open
                                             </span>
                                         ) : (
+                                            // Tampilan Badge untuk Closed atau Deleted (Netral)
                                             <span className="bg-gray-100 text-gray-500 text-xs px-3 py-1 rounded-full font-bold border border-gray-200">
-                                                Closed
+                                                {m.is_deleted ? 'Tidak Aktif' : 'Closed'}
                                             </span>
                                         )}
                                     </div>
