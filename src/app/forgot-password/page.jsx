@@ -18,8 +18,10 @@ export default function ForgotPassword() {
     try {
       // 1. Panggil fungsi reset password Supabase
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        // Ganti URL ini dengan URL website Anda nanti saat production
-        redirectTo: `${window.location.origin}/update-password`,
+        // --- PERBAIKAN UTAMA DI SINI ---
+        // Kita mengarahkan ke Auth Callback handler (PKCE), bukan langsung ke halaman frontend.
+        // Parameter ?next=/update-password akan dibaca oleh route.js untuk redirect akhir.
+        redirectTo: `${window.location.origin}/auth/callback?next=/update-password`,
       })
 
       if (error) throw error

@@ -9,15 +9,21 @@ export default function UpdatePassword() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  // Cek apakah ada session? (Link dari email otomatis membuat user login sementara)
+  // --- PERBAIKAN DI SINI ---
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
-        // Jika tidak ada session (user akses langsung tanpa link email), tendang ke login
-        router.push('/login')
+    // 1. Cek status auth secara real-time
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_OUT' || !session) {
+        // Hanya redirect jika user benar-benar logout / tidak ada sesi
+        router.push('/login') 
       }
     })
-  }, [])
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [router])
+  // -------------------------
 
   const handleUpdate = async (e) => {
     e.preventDefault()
@@ -32,7 +38,10 @@ export default function UpdatePassword() {
 
       if (error) throw error
 
-      // Sukses, arahkan ke dashboard
+      // Sukses! Bisa tambahkan alert atau toast di sini jika mau
+      alert('Password berhasil diubah! Silakan login kembali.')
+      
+      // Redirect ke dashboard atau login
       router.push('/dashboard')
 
     } catch (err) {
