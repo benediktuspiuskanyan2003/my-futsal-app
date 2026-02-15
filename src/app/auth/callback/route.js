@@ -3,14 +3,17 @@ import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
 export async function GET(request) {
+  // 1. Ambil URL dan Code
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  // Ambil parameter 'next', jika tidak ada default ke '/dashboard'
+  
+  // Ambil parameter 'next' (tujuan), default ke dashboard jika tidak ada
   const next = searchParams.get('next') ?? '/dashboard'
 
   if (code) {
-    const cookieStore = await cookies() // Wajib await di Next.js 15/16
+    const cookieStore = await cookies()
 
+    // 2. Buat Client Supabase (Server Side)
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -25,21 +28,29 @@ export async function GET(request) {
                 cookieStore.set(name, value, options)
               )
             } catch {
-              // Abaikan error ini jika dipanggil dari Server Component
+              // Abaikan error ini di Route Handler
             }
           },
         },
       }
     )
     
-    // Tukar kode token menjadi session
+    // 3. Tukar "Code" dari email menjadi "Session Login"
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     
     if (!error) {
+      // BERHASIL: Redirect ke halaman tujuan (misal: /update-password)
       return NextResponse.redirect(`${origin}${next}`)
+    } else {
+      // GAGAL: Print error di Logs Vercel
+      console.error('Supabase Auth Error:', error)
+
+      // PENTING: Redirect ke Login + Tampilkan Pesan Error di URL
+      // Supaya kita tahu KENAPA gagal (misal: token expired, bad request, dll)
+      return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(error.message)}`)
     }
   }
 
-  // Jika gagal, kembalikan ke halaman login/error
-  return NextResponse.redirect(`${origin}/auth/auth-code-error`)
+  // Jika tidak ada 'code' di URL sama sekali
+  return NextResponse.redirect(`${origin}/login?error=no_code_provided`)
 }
