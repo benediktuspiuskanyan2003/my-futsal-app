@@ -1,10 +1,9 @@
 // src/app/login/page.jsx
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react' // Import useEffect
 import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-
 
 export default function LoginPage() {
   const router = useRouter()
@@ -13,6 +12,45 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [notification, setNotification] = useState(null)
+
+  // --- TAMBAHAN BARU: Jaring Pengaman URL Token ---
+  // Gunanya: Menangkap user yang mental ke login padahal bawa token reset password
+  useEffect(() => {
+    // 1. Cek apakah ada error di URL (misal dari Vercel)
+    const urlParams = new URLSearchParams(window.location.search);
+    const errorMsg = urlParams.get('error');
+    const errorDesc = urlParams.get('error_description');
+
+    if (errorMsg) {
+       // Tampilkan error jika ada (biar kita tau kenapa gagal)
+       setNotification({
+         type: 'error',
+         title: 'Login Gagal',
+         message: errorDesc || errorMsg
+       });
+    }
+
+    // 2. Cek apakah ada Token Recovery (Ganti Password) di URL Hash (#)
+    // Supabase lama suka kirim token lewat #access_token=...
+    const hash = window.location.hash;
+    if (hash && hash.includes('type=recovery')) {
+        // Redirect manual ke halaman update password
+        router.push('/update-password');
+    }
+
+    // 3. Listener Auth State (Paling Kuat)
+    // Jika Supabase mendeteksi sesi pemulihan, langsung lempar ke update-password
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === "PASSWORD_RECOVERY") {
+            router.push('/update-password');
+        }
+    });
+
+    return () => {
+        authListener.subscription.unsubscribe();
+    };
+  }, [router]);
+  // ------------------------------------------------
 
   const handleLogin = async (e) => {
     e.preventDefault()
@@ -106,8 +144,6 @@ export default function LoginPage() {
                 <div>
                     <div className="flex justify-between items-center mb-1">
                         <label className="block text-sm font-bold text-gray-700">Password</label>
-                        {/* Opsional: Link Lupa Password (bisa ditambahkan nanti) */}
-                        {/* <a href="#" className="text-xs font-bold text-blue-600 hover:underline">Lupa password?</a> */}
                     </div>
                     <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
@@ -136,7 +172,7 @@ export default function LoginPage() {
                     </div>
                 </div>
 
-                {/* TAMBAHKAN INI: Link Lupa Password */}
+                {/* Link Lupa Password */}
                 <div className="flex justify-end">
                     <Link href="/forgot-password" className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition">
                         Lupa Password?
