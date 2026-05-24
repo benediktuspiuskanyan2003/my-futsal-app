@@ -159,7 +159,7 @@ const validateTime = (e) => {
       }
 
       // 3. SKENARIO C: SIMPAN JADWAL PERTANDINGAN
-      const { error: matchError } = await supabase
+      const { data: newMatch, error: matchError } = await supabase
         .from('matches')
         .insert([{
           user_id: user.id, // <--- WAJIB ADA! (Agar lolos security policy)
@@ -177,8 +177,80 @@ const validateTime = (e) => {
           
           status: 'Open'
         }])
+        .select()
+        .single()
 
       if (matchError) throw matchError
+      
+      const matchId = newMatch.id
+
+      // ---------------------------------------------------------
+      // 4. SKENARIO D: KIRIM NOTIFIKASI KE TIM DI KOTA YANG SAMA
+      // ---------------------------------------------------------
+      try {
+        // Tentukan kota target (dari tim yang sudah ada, atau tim baru)
+        const targetCity = myTeam ? myTeam.city : formData.new_team_city;
+        const posterName = myTeam ? myTeam.name : formData.new_team_name;
+
+        // A. Cari semua tim di kota yang sama, KECUALI tim kita sendiri
+        const { data: targetTeams, error: teamsError } = await supabase
+          .from('teams')
+          .select('id, manager_id')
+          .eq('city', targetCity)
+          .neq('id', teamIdToUse); // Jangan kirim notif ke diri sendiri
+
+        // B. Jika ada tim lain di kota tersebut, buatkan notifikasi massal
+        if (!teamsError && targetTeams && targetTeams.length > 0) {
+          
+          const notificationsData = targetTeams.map(team => ({
+            team_id: team.id,
+            user_id: team.manager_id,
+            message: `🔥 ${posterName} sedang mencari lawan sparring di ${targetCity}! Gas sikat!`,
+            is_read: false
+          }));
+
+          // C. Masukkan ke tabel notifications sekaligus (Bulk Insert)
+          const { error: notifError } = await supabase
+            .from('notifications')
+            .insert(notificationsData);
+
+          if (notifError) console.error("Gagal kirim notif:", notifError);
+
+          // D. KIRIM EMAIL NOTIFICATION KE SEMUA TIM DI KOTA YANG SAMA
+          try {
+            const response = await fetch('/api/send-email', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                matchId: matchId,
+                teamName: posterName,
+                teamCity: targetCity,
+                playDate: formData.play_date,
+                playTime: formData.play_time,
+                locationName: formData.location_name,
+                creatorEmail: user.email
+              })
+            });
+
+            const emailResult = await response.json();
+            if (emailResult.success) {
+              console.log(`Email berhasil dikirim ke ${emailResult.emailsSent} tim`);
+            } else {
+              console.error("Gagal kirim email:", emailResult.error);
+            }
+          } catch (emailError) {
+            console.error("Error saat kirim email:", emailError);
+            // Jangan throw error agar jadwal tetap berhasil diposting
+          }
+        }
+      } catch (err) {
+        console.error("Error pada sistem notifikasi:", err);
+        // Kita tidak throw error di sini agar jadwal tetap berhasil diposting 
+        // meskipun notifikasi (misalnya) gagal terkirim.
+      }
+      // ---------------------------------------------------------
 
       setNotification({
         type: 'success',

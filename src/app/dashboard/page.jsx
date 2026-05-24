@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { CITIES } from '../../lib/cities' 
+import { CITIES } from '../../lib/cities'
+import clientLogger from '../../lib/clientLogger' 
 
 export default function Dashboard() {
   const router = useRouter()
@@ -24,12 +25,10 @@ export default function Dashboard() {
 
   const [notification, setNotification] = useState(null)
   const [showLogoutModal, setShowLogoutModal] = useState(false)
+  const [showMobileMenu, setShowMobileMenu] = useState(false)
 
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleteTargetId, setDeleteTargetId] = useState(null)
-
-  const [showMarkDoneModal, setShowMarkDoneModal] = useState(false)
-  const [targetMatchId, setTargetMatchId] = useState(null)
 
   // Fungsi ini dipanggil saat tombol TRASH diklik
   const openDeleteModal = (matchId) => {
@@ -58,31 +57,43 @@ export default function Dashboard() {
 
   const fetchDashboardData = async () => {
     try {
+      // 1. Get user (must be first)
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return router.push('/login')
+      if (!user) {
+        return router.push('/login')
+      }
+      
       setUser(user)
 
-      const { data: profileData } = await supabase
-        .from('profiles').select('*').eq('id', user.id).single()
-      if (profileData) setProfile(profileData)
+      // 2. Fetch profile & team in PARALLEL (not sequential)
+      const [profileResult, teamResult] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', user.id).single(),
+        supabase.from('teams').select('*').eq('manager_id', user.id).single()
+      ])
 
-      // Ambil semua kolom termasuk homebase
-      const { data: teamData } = await supabase
-        .from('teams').select('*').eq('manager_id', user.id).single()
-      
+      const profileData = profileResult.data
+      const teamData = teamResult.data
+
+      if (profileData) {
+        setProfile(profileData)
+      }
+
       if (teamData) {
         setTeam(teamData)
+        
+        // 3. Only fetch matches if team exists (SELECT only needed fields)
         const { data: matchesData } = await supabase
           .from('matches')
-          .select('*')
+          .select('id, team_id, play_date, play_time, location_name, opponent_team_id, conversation_id, status')
           .eq('team_id', teamData.id)
           .order('status', { ascending: false })
           .order('play_date', { ascending: true })
+          .limit(10) // Limit to first 10 matches for faster load
         
         setMyMatches(matchesData || [])
       }
     } catch (error) {
-      console.error(error)
+      console.error('Dashboard fetch error:', error)
     } finally {
       setLoading(false)
     }
@@ -256,47 +267,6 @@ export default function Dashboard() {
     }
   }
 
-  // 1. Fungsi Pembuka Modal (Dipasang di Tombol)
-  const openMarkDoneModal = (matchId) => {
-      setTargetMatchId(matchId)
-      setShowMarkDoneModal(true)
-  }
-
-  // 2. Fungsi Eksekusi (Dipasang di Tombol "YA" pada Modal)
-  const handleMarkAsDone = async () => {
-    // Cek ID dulu
-    if (!targetMatchId) return
-
-    try {
-      const { error } = await supabase
-        .from('matches')
-        .update({ status: 'Closed' })
-        .eq('id', targetMatchId)
-
-      if (error) throw error
-
-      fetchDashboardData() // Refresh data
-
-      // Notifikasi Sukses
-      setNotification({
-        type: 'success',
-        title: 'Selamat! 🤝',
-        message: 'Postingan ditutup. Semoga pertandingannya seru!'
-      })
-
-    } catch (error) { 
-        setNotification({
-            type: 'error',
-            title: 'Gagal Update',
-            message: error.message
-        })
-    } finally {
-        // Reset State & Tutup Modal
-        setShowMarkDoneModal(false)
-        setTargetMatchId(null)
-    }
-  }
-
   const handleDelete = async () => {
     // Tidak perlu confirm() lagi, karena sudah lewat modal
     if (!deleteTargetId) return
@@ -430,11 +400,11 @@ export default function Dashboard() {
 
       <div className="max-w-4xl mx-auto">
         
-        {/* Header Dashboard dengan Icon SVG */}
-        <div className="flex justify-between items-end mb-8">
-          <div className="flex items-center gap-3">
+        {/* Header Dashboard dengan Burger Menu (Mobile-First) */}
+        <div className="flex justify-between items-center mb-8 gap-4">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
             {/* ICON DASHBOARD (SVG) */}
-            <div className="p-2 bg-gray-100 rounded-lg text-gray-700">
+            <div className="p-2 bg-gray-100 rounded-lg text-gray-700 flex-shrink-0">
                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="3" y="3" width="7" height="7"></rect>
                   <rect x="14" y="3" width="7" height="7"></rect>
@@ -442,21 +412,114 @@ export default function Dashboard() {
                   <rect x="3" y="14" width="7" height="7"></rect>
                </svg>
             </div>
-            <div>
-               <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Dashboard Saya</h1>
-               <p className="text-sm text-gray-500 hidden md:block">Kelola tim dan jadwal tandingmu di sini.</p>
-            </div>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 truncate">Dashboard</h1>
           </div>
           
-          <button 
-            onClick={() => setShowLogoutModal(true)} // <--- GANTI JADI INI
-            className="flex items-center gap-2 text-red-600 font-bold text-sm hover:bg-red-50 px-3 py-2 rounded-lg transition"
-          >
-            {/* Icon Logout Kecil */}
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-            Logout
-          </button>
+          {/* Action Buttons - DESKTOP */}
+          <div className="hidden lg:flex gap-2 flex-shrink-0">
+            {/* Schedule/Jadwal Button */}
+            <Link 
+              href="/dashboard/jadwal-sparring"
+              className="p-2 md:px-3 md:py-2 text-green-600 hover:bg-green-50 rounded-lg transition border border-green-200 flex items-center gap-2"
+              title="Jadwal Sparring"
+            >
+              {/* Icon Calendar */}
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+              <span className="font-bold text-sm">Jadwal</span>
+            </Link>
+
+            {/* Conversations/Chats Button */}
+            <Link 
+              href="/dashboard/match-requests"
+              className="p-2 md:px-3 md:py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition border border-blue-200 flex items-center gap-2"
+              title="Obrolan Percakapan"
+            >
+              {/* Icon Chat */}
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+              <span className="font-bold text-sm">Obrolan</span>
+            </Link>
+            
+            {/* Settings Button */}
+            <Link 
+              href="/dashboard/settings"
+              className="p-2 md:px-3 md:py-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition border border-indigo-200 flex items-center gap-2"
+              title="Pengaturan"
+            >
+              {/* Icon Settings */}
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 1v6m0 6v6M4.22 4.22l4.24 4.24m5.08 5.08l4.24 4.24M1 12h6m6 0h6M4.22 19.78l4.24-4.24m5.08-5.08l4.24-4.24"></path></svg>
+              <span className="font-bold text-sm">Pengaturan</span>
+            </Link>
+            
+            {/* Logout Button */}
+            <button 
+              onClick={() => setShowLogoutModal(true)}
+              className="p-2 md:px-3 md:py-2 text-red-600 hover:bg-red-50 rounded-lg transition border border-red-200 flex items-center gap-2"
+              title="Logout"
+            >
+              {/* Icon Logout */}
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+              <span className="font-bold text-sm">Logout</span>
+            </button>
+          </div>
+
+          {/* Mobile Menu - HAMBURGER BUTTON */}
+          <div className="flex items-center gap-2 lg:hidden">
+            {/* Logout Button (Mobile) */}
+            <button 
+              onClick={() => setShowLogoutModal(true)}
+              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition border border-red-200"
+              title="Logout"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+            </button>
+
+            {/* Hamburger Menu Button */}
+            <button 
+              onClick={() => setShowMobileMenu(!showMobileMenu)}
+              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition border border-gray-200"
+              title="Menu"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="4" y1="6" x2="20" y2="6"></line>
+                <line x1="4" y1="12" x2="20" y2="12"></line>
+                <line x1="4" y1="18" x2="20" y2="18"></line>
+              </svg>
+            </button>
+          </div>
         </div>
+
+        {/* Mobile Menu Dropdown */}
+        {showMobileMenu && (
+          <div className="lg:hidden mb-6 bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+            <Link 
+              href="/dashboard/jadwal-sparring"
+              onClick={() => setShowMobileMenu(false)}
+              className="block px-4 py-3 text-green-600 hover:bg-green-50 border-b border-gray-200 flex items-center gap-3 font-semibold"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+              📅 Jadwal Sparring
+            </Link>
+
+            <Link 
+              href="/dashboard/match-requests"
+              onClick={() => setShowMobileMenu(false)}
+              className="block px-4 py-3 text-blue-600 hover:bg-blue-50 border-b border-gray-200 flex items-center gap-3 font-semibold"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+              💬 Chat & Percakapan
+            </Link>
+
+            <Link 
+              href="/dashboard/settings"
+              onClick={() => setShowMobileMenu(false)}
+              className="block px-4 py-3 text-indigo-600 hover:bg-indigo-50 flex items-center gap-3 font-semibold"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 1v6m0 6v6M4.22 4.22l4.24 4.24m5.08 5.08l4.24 4.24M1 12h6m6 0h6M4.22 19.78l4.24-4.24m5.08-5.08l4.24-4.24"></path></svg>
+              ⚙️ Pengaturan
+            </Link>
+          </div>
+        )}
+
 
         {/* --- IDENTITAS TIM --- */}
         <div className="bg-white rounded-xl shadow-sm mb-6 border border-gray-200 overflow-hidden">
@@ -467,6 +530,9 @@ export default function Dashboard() {
                 <img 
                     src={team.banner_url} 
                     alt="Sampul Tim" 
+                    loading="lazy"
+                    width={1200}
+                    height={160}
                     className={`w-full h-full object-cover transition ${!isEditing ? 'cursor-pointer hover:opacity-90' : ''}`}
                     onClick={() => !isEditing && setPreviewImage(team.banner_url)}
                 />
@@ -530,7 +596,7 @@ export default function Dashboard() {
 
                 <div className="flex items-center gap-4 mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
                     <div className="w-16 h-16 bg-gray-200 rounded-full overflow-hidden border-2 border-white shadow-sm flex-shrink-0">
-                         {team?.logo_url ? <img src={team.logo_url} className="w-full h-full object-cover"/> : <span className="flex items-center justify-center h-full text-2xl">⚽</span>}
+                         {team?.logo_url ? <img src={team.logo_url} alt="Logo Tim" loading="lazy" width={150} height={150} className="w-full h-full object-cover"/> : <span className="flex items-center justify-center h-full text-2xl">⚽</span>}
                     </div>
                     <div>
                         <p className="text-sm font-bold text-gray-900 mb-2">Logo Tim (Avatar)</p>
@@ -697,7 +763,7 @@ export default function Dashboard() {
                         onClick={() => team?.logo_url && setPreviewImage(team.logo_url)}
                     >
                         <div className="w-full h-full bg-gray-100 rounded-full overflow-hidden flex items-center justify-center text-4xl border border-gray-100">
-                            {team?.logo_url ? <img src={team.logo_url} className="w-full h-full object-cover" /> : <span>⚽</span>}
+                            {team?.logo_url ? <img src={team.logo_url} alt="Logo Tim" loading="lazy" width={96} height={96} className="w-full h-full object-cover" /> : <span>⚽</span>}
                         </div>
                     </div>
                 </div>
@@ -904,7 +970,7 @@ export default function Dashboard() {
                                 // BADGE: SELESAI
                                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-gray-200 text-gray-600 border border-gray-300">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                                    Selesai / Dapat Lawan
+                                    Selesai
                                 </span>
                             )}
                         </div>
@@ -929,17 +995,14 @@ export default function Dashboard() {
 
                         {!m.is_deleted && m.status === 'Open' && (
                             <>
-                                <button onClick={() => openMarkDoneModal(m.id)} className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition shadow-sm hover:shadow flex items-center justify-center gap-2">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                                    <span className="whitespace-nowrap">Dapat Lawan</span>
-                                </button>
-                                
-                                <div className="flex items-center gap-2">
-                                    <Link href={`/matches/${m.id}/edit`} className="w-10 h-10 flex items-center justify-center bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-100 rounded-xl transition" title="Edit">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                <div className="flex items-center gap-2 w-full">
+                                    <Link href={`/matches/${m.id}/edit`} className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-100 px-4 py-2.5 rounded-xl text-sm font-bold transition flex items-center justify-center gap-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                        <span className="whitespace-nowrap">Edit</span>
                                     </Link>
-                                    <button onClick={() => openDeleteModal(m.id)} className="w-10 h-10 flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-600 border border-red-100 rounded-xl transition" title="Hapus">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                    <button onClick={() => openDeleteModal(m.id)} className="flex-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-100 px-4 py-2.5 rounded-xl text-sm font-bold transition flex items-center justify-center gap-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                        <span className="whitespace-nowrap">Hapus</span>
                                     </button>
                                 </div>
                             </>
@@ -1088,49 +1151,6 @@ export default function Dashboard() {
                     className="flex-1 py-3.5 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 shadow-lg shadow-red-200 transition transform active:scale-95"
                  >
                     Ya, Hapus
-                 </button>
-              </div>
-
-           </div>
-        </div>
-      )}
-
-      {/* --- MODAL KONFIRMASI DAPAT LAWAN --- */}
-      {showMarkDoneModal && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity animate-fade-in">
-           
-           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 transform transition-all scale-100 flex flex-col items-center text-center">
-              
-              {/* Icon Handshake / Deal / Check */}
-              <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mb-5">
-                 <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center shadow-sm">
-                    {/* Icon Handshake Sederhana (SVG) */}
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
-                 </div>
-              </div>
-
-              {/* Teks Konfirmasi */}
-              <h3 className="text-xl font-black text-gray-900 mb-2">
-                 Sudah Dapat Lawan?
-              </h3>
-              <p className="text-gray-500 text-sm leading-relaxed mb-8">
-                 Wah mantap! Jika Anda klik "Ya", postingan ini akan <strong className="text-gray-800">dihapus dari halaman depan</strong> agar tidak ada orang lain yang menghubungi lagi.
-              </p>
-
-              {/* Tombol Aksi */}
-              <div className="flex gap-3 w-full">
-                 <button 
-                    onClick={() => setShowMarkDoneModal(false)}
-                    className="flex-1 py-3.5 rounded-xl font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition"
-                 >
-                    Belum
-                 </button>
-                 
-                 <button 
-                    onClick={handleMarkAsDone} // Panggil fungsi eksekusi
-                    className="flex-1 py-3.5 rounded-xl font-bold text-white bg-green-600 hover:bg-green-700 shadow-lg shadow-green-200 transition transform active:scale-95 flex items-center justify-center gap-2"
-                 >
-                    Ya, Deal! 🤝
                  </button>
               </div>
 

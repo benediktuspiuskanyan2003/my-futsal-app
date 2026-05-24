@@ -31,7 +31,7 @@ export default function MatchCard({ match }) {
                 {/* Avatar Tim: Ukuran dikecilkan sedikit di mobile */}
                 <div className="w-10 h-10 md:w-12 md:h-12 bg-gray-100 rounded-full flex items-center justify-center overflow-hidden border-2 border-white shadow-sm shrink-0">
                     {team?.logo_url ? (
-                        <img src={team.logo_url} alt={team.name} className="w-full h-full object-cover"/>
+                        <img src={team.logo_url} alt={team.name} loading="lazy" width={48} height={48} className="w-full h-full object-cover"/>
                     ) : (
                         // Icon Shield (Pengganti Bola Emoji)
                         <svg className="text-gray-400 w-5 h-5 md:w-6 md:h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import Link from 'next/link'
+import clientLogger from '../../lib/clientLogger'
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('')
@@ -16,19 +17,26 @@ export default function ForgotPassword() {
     setError(null)
 
     try {
+      clientLogger.info('Password reset request', { email, page: 'forgot-password' })
+      
       // 1. Panggil fungsi reset password Supabase
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        // --- PERBAIKAN UTAMA DI SINI ---
-        // Kita mengarahkan ke Auth Callback handler (PKCE), bukan langsung ke halaman frontend.
-        // Parameter ?next=/update-password akan dibaca oleh route.js untuk redirect akhir.
-        redirectTo: `${window.location.origin}/auth/callback?next=/update-password`,
+        // Redirect langsung ke update-password (bukan callback)
+        // Supabase akan auto-handle code exchange
+        redirectTo: `${window.location.origin}/update-password`,
       })
 
       if (error) throw error
 
+      clientLogger.info('Password reset email sent', { email, page: 'forgot-password' })
       setMessage('Cek email Anda! Link untuk reset password telah dikirim.')
 
     } catch (err) {
+      clientLogger.error('Password reset request failed', { 
+        email, 
+        error: err.message,
+        page: 'forgot-password' 
+      })
       setError(err.message)
     } finally {
       setLoading(false)

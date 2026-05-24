@@ -2,28 +2,43 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
+import clientLogger from '../../lib/clientLogger'
 
 export default function UpdatePassword() {
   const router = useRouter()
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [isValidSession, setIsValidSession] = useState(false)
+  const [pageLoading, setPageLoading] = useState(true)
 
-  // --- PERBAIKAN DI SINI ---
+  // Check apakah user punya valid session (dari password recovery)
   useEffect(() => {
-    // 1. Cek status auth secara real-time
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_OUT' || !session) {
-        // Hanya redirect jika user benar-benar logout / tidak ada sesi
-        router.push('/login') 
-      }
-    })
+    const checkSession = async () => {
+      try {
+        clientLogger.info('Update password: checking session', { page: 'update-password' })
+        
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        if (!session) {
+          // Tidak ada session, redirect ke forgot-password
+          clientLogger.warn('Update password: no session found, redirecting', { page: 'update-password' })
+          router.push('/forgot-password')
+          return
+        }
 
-    return () => {
-      subscription.unsubscribe()
+        clientLogger.info('Update password: valid session found', { page: 'update-password' })
+        setIsValidSession(true)
+      } catch (err) {
+        clientLogger.error('Update password: session check failed', { error: err.message, page: 'update-password' })
+        router.push('/forgot-password')
+      } finally {
+        setPageLoading(false)
+      }
     }
+
+    checkSession()
   }, [router])
-  // -------------------------
 
   const handleUpdate = async (e) => {
     e.preventDefault()
@@ -31,6 +46,8 @@ export default function UpdatePassword() {
     setError(null)
 
     try {
+      clientLogger.info('Password update attempt', { page: 'update-password' })
+      
       // Fungsi Update User (Password Baru)
       const { error } = await supabase.auth.updateUser({ 
         password: password 
@@ -38,13 +55,20 @@ export default function UpdatePassword() {
 
       if (error) throw error
 
-      // Sukses! Bisa tambahkan alert atau toast di sini jika mau
-      alert('Password berhasil diubah! Silakan login kembali.')
+      clientLogger.info('Password updated successfully', { page: 'update-password' })
       
-      // Redirect ke dashboard atau login
-      router.push('/dashboard')
+      // Sukses! Bisa tambahkan alert atau toast di sini jika mau
+      alert('Password berhasil diubah! Silakan login dengan password baru Anda.')
+      
+      // Logout dan redirect ke login
+      await supabase.auth.signOut()
+      router.push('/login')
 
     } catch (err) {
+      clientLogger.error('Password update failed', { 
+        error: err.message,
+        page: 'update-password' 
+      })
       setError(err.message)
     } finally {
       setLoading(false)

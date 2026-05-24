@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react' // Import useEffect
 import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import clientLogger from '../../lib/clientLogger'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -12,6 +13,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [notification, setNotification] = useState(null)
+  const [notificationAction, setNotificationAction] = useState(null)
 
   // --- TAMBAHAN BARU: Jaring Pengaman URL Token ---
   // Gunanya: Menangkap user yang mental ke login padahal bawa token reset password
@@ -56,8 +58,11 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
     setNotification(null)
+    setNotificationAction(null)
 
     try {
+      clientLogger.info('Login attempt', { email, page: 'login' })
+      
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -65,13 +70,57 @@ export default function LoginPage() {
       if (error) throw error
       
       // Login Sukses
+      clientLogger.info('Login success', { email, page: 'login' })
       router.push('/dashboard') 
     } catch (error) {
+      clientLogger.error('Login failed', { 
+        email, 
+        error: error.message,
+        page: 'login' 
+      })
+
+      // Detect error type dan berikan pesan yang lebih specific
+      let errorTitle = 'Gagal Masuk'
+      let errorMessage = 'Email atau password salah. Silakan cek kembali.'
+      let actionText = null
+      let actionLink = null
+
+      // Check error message untuk mendeteksi tipe error
+      const errorMsg = error.message?.toLowerCase() || ''
+
+      if (errorMsg.includes('invalid login credentials') || errorMsg.includes('email not confirmed')) {
+        // Email tidak terdaftar atau credentials tidak valid
+        if (errorMsg.includes('email not confirmed')) {
+          errorTitle = 'Email Belum Dikonfirmasi'
+          errorMessage = 'Silakan periksa email Anda untuk mengkonfirmasi akun.'
+        } else {
+          errorTitle = 'Email Tidak Terdaftar'
+          errorMessage = 'Email ini belum terdaftar. Apakah Anda ingin membuat akun baru?'
+          actionText = 'Daftar Sekarang'
+          actionLink = '/register'
+        }
+      } else if (errorMsg.includes('password')) {
+        errorTitle = 'Password Salah'
+        errorMessage = 'Password yang Anda masukkan tidak sesuai. Apakah Anda lupa password?'
+        actionText = 'Reset Password'
+        actionLink = '/forgot-password'
+      } else if (errorMsg.includes('too many')) {
+        errorTitle = 'Terlalu Banyak Percobaan'
+        errorMessage = 'Anda telah mencoba login terlalu banyak kali. Silakan coba beberapa saat lagi.'
+      }
+
       setNotification({
         type: 'error',
-        title: 'Gagal Masuk',
-        message: 'Email atau password salah. Silakan cek kembali.'
+        title: errorTitle,
+        message: errorMessage
       })
+
+      if (actionText && actionLink) {
+        setNotificationAction({
+          text: actionText,
+          href: actionLink
+        })
+      }
     } finally {
       setLoading(false)
     }
@@ -208,15 +257,23 @@ export default function LoginPage() {
         </div>
       </div>
       
-      {/* NOTIFIKASI ERROR (Simpel) */}
+      {/* NOTIFIKASI ERROR (Dengan Action Button) */}
       {notification && (
-        <div className="fixed bottom-5 right-5 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded shadow-lg animate-fade-in-up z-50">
-            <div className="flex justify-between items-start">
-                <div>
+        <div className="fixed bottom-5 right-5 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded shadow-lg animate-fade-in-up z-50 max-w-sm">
+            <div className="flex justify-between items-start gap-3">
+                <div className="flex-1">
                     <p className="font-bold">{notification.title}</p>
                     <p className="text-sm mt-1">{notification.message}</p>
+                    {notificationAction && (
+                      <Link 
+                        href={notificationAction.href}
+                        className="inline-block mt-3 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded transition"
+                      >
+                        {notificationAction.text}
+                      </Link>
+                    )}
                 </div>
-                <button onClick={() => setNotification(null)} className="text-red-500 hover:text-red-700 font-bold text-xl ml-4">&times;</button>
+                <button onClick={() => setNotification(null)} className="text-red-500 hover:text-red-700 font-bold text-xl flex-shrink-0">&times;</button>
             </div>
         </div>
       )}

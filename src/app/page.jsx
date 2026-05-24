@@ -62,18 +62,48 @@ export default function Home() {
       setLoading(true)
       const today = new Date().toISOString().split('T')[0]
 
-      let { data, error } = await supabase
+      // First, fetch matches only
+      let { data: matchesData, error: matchesError } = await supabase
         .from('matches')
-        .select(`*, teams ( name, city, logo_url, skill_level, is_verified )`)
+        .select('*')
         .eq('status', 'Open')
-        .eq('is_deleted', false) // Kalau di matches, kolom ini ADA. Jadi aman.
         .gte('play_date', today) 
         .order('play_date', { ascending: true })
 
-      if (error) throw error
-      setMatches(data || [])
+      if (matchesError) {
+        console.error('Supabase error:', {
+          message: matchesError?.message,
+          code: matchesError?.code,
+          details: matchesError?.details,
+          hint: matchesError?.hint,
+          fullError: matchesError
+        })
+        throw matchesError
+      }
+
+      // Then fetch team details for each match if team_id exists
+      if (matchesData && matchesData.length > 0) {
+        const teamIds = [...new Set(matchesData.map(m => m.team_id).filter(Boolean))]
+        
+        if (teamIds.length > 0) {
+          const { data: teamsData, error: teamsError } = await supabase
+            .from('teams')
+            .select('id, name, city, logo_url, skill_level, is_verified')
+            .in('id', teamIds)
+          
+          if (!teamsError && teamsData) {
+            const teamMap = Object.fromEntries(teamsData.map(t => [t.id, t]))
+            matchesData = matchesData.map(match => ({
+              ...match,
+              teams: teamMap[match.team_id] || null
+            }))
+          }
+        }
+      }
+
+      setMatches(matchesData || [])
     } catch (error) {
-      console.error('Error:', error)
+      console.error('Error fetching matches:', error?.message || error)
     } finally {
       setLoading(false)
     }

@@ -4,6 +4,10 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { useParams } from 'next/navigation' 
 import Link from 'next/link'
+import RatingModal from '@/components/RatingModal'
+import RatingDisplay from '@/components/RatingDisplay'
+import TeamRatingSummary from '@/components/TeamRatingSummary'
+import { getRatingsForTeam } from '@/lib/ratings'
 
 export default function MatchDetail() { 
   const params = useParams()
@@ -17,44 +21,91 @@ export default function MatchDetail() {
   const [currentUser, setCurrentUser] = useState(null) // <--- INI SOLUSINYA
   const [previewImage, setPreviewImage] = useState(null) // Untuk Lightbox
 
-  const [showContactModal, setShowContactModal] = useState(false);
+  const [showContactModal, setShowContactModal] = useState(false)
+  const [isResponding, setIsResponding] = useState(false)
+  const [isContactingWA, setIsContactingWA] = useState(false)
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [responseAction, setResponseAction] = useState(null) // 'accept' atau 'reject'
+  const [userTeam, setUserTeam] = useState(null)
+
+  // Rating state
+  const [showRatingModal, setShowRatingModal] = useState(false)
+  const [teamRatings, setTeamRatings] = useState([])
+  const [ratingsLoading, setRatingsLoading] = useState(false)
+
+  // Chat state
+  const [conversation, setConversation] = useState(null)
+  const [loadingChat, setLoadingChat] = useState(false)
 
   useEffect(() => {
     const fetchCurrentUser = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       setCurrentUser(user)
+      
+      // Jika user login, ambil team mereka
+      if (user) {
+        const { data: teamData } = await supabase
+          .from('teams')
+          .select('*')
+          .eq('manager_id', user.id)
+          .single()
+        
+        if (teamData) {
+          setUserTeam(teamData)
+        }
+      }
     }
-    if (id) fetchMatchDetail()
+    if (id) {
+      fetchMatchDetail()
+      fetchCurrentUser()
+    }
   }, [id])
 
   const fetchMatchDetail = async () => {
     try {
       setLoading(true)
       
-      const { data: matchData, error } = await supabase
+      // First, fetch match details only
+      const { data: matchData, error: matchError } = await supabase
         .from('matches')
-        .select(`
-          *,
-          teams (
-            id,
-            name,
-            city,
-            logo_url,
-            skill_level,
-            manager_id
-          )
-        `)
+        .select('*')
         .eq('id', id) 
         .single()
 
-      if (error) throw error
-      setMatch(matchData)
+      if (matchError) throw matchError
 
-      if (matchData?.teams?.manager_id) {
+      // Then fetch team details
+      let enhancedMatch = { ...matchData }
+      
+      if (matchData?.team_id) {
+        const { data: teamData } = await supabase
+          .from('teams')
+          .select('id, name, city, logo_url, skill_level, manager_id')
+          .eq('id', matchData.team_id)
+          .single()
+        
+        enhancedMatch.teams = teamData || null
+      }
+
+      // Fetch opponent team if exists
+      if (matchData?.opponent_team_id) {
+        const { data: opponentTeamData } = await supabase
+          .from('teams')
+          .select('id, name, city, logo_url, skill_level, manager_id')
+          .eq('id', matchData.opponent_team_id)
+          .single()
+        
+        enhancedMatch.opponent_teams = opponentTeamData || null
+      }
+
+      setMatch(enhancedMatch)
+
+      // Fetch manager's WhatsApp number
+      if (enhancedMatch?.teams?.manager_id) {
         const { data: profileData } = await supabase
           .from('profiles')
           .select('whatsapp_number')
-          .eq('id', matchData.teams.manager_id)
+          .eq('id', enhancedMatch.teams.manager_id)
           .single()
 
         let noWaFormat = profileData?.whatsapp_number || ''
@@ -69,57 +120,107 @@ export default function MatchDetail() {
       }
 
     } catch (error) {
-      console.error(error)
+      console.error('Error fetching match detail:', error?.message || error)
     } finally {
       setLoading(false)
     }
   }
 
-  const handleContactWA = () => {
-      // 1. Cek Ketersediaan Nomor
-      if (!managerPhone) {
+  // Fetch ratings untuk tim yang di-view
+  useEffect(() => {
+    const fetchRatings = async () => {
+      if (!match?.teams?.id) return
+      
+      try {
+        setRatingsLoading(true)
+        const ratings = await getRatingsForTeam(match.teams.id)
+        setTeamRatings(ratings || [])
+      } catch (error) {
+        console.error('Error fetching ratings:', error)
+        setTeamRatings([])
+      } finally {
+        setRatingsLoading(false)
+      }
+    }
+
+    fetchRatings()
+  }, [match?.teams?.id])
+
+  const handleContactWA = async () => {
+      if (!currentUser || !userTeam) {
           setNotification({
-             type: 'error', // Supaya warnanya merah
-             title: 'Nomor Tidak Tersedia',
-             message: 'Maaf, nomor WhatsApp manager tim ini belum diatur oleh pemiliknya.'
+              type: 'error',
+              title: 'Tidak Bisa Menghubungi',
+              message: 'Login terlebih dahulu atau pastikan Anda sudah membuat tim.'
           })
           return
       }
-      
-      // 2. AUTO-FORMAT NOMOR HP (Penting!)
-      // Mengubah '0812...' menjadi '62812...' agar link WA berfungsi
-      let phone = managerPhone.toString().trim()
-      
-      // Hapus karakter non-angka (jika user iseng nulis "0812-3456")
-      phone = phone.replace(/\D/g, '')
 
-      if (phone.startsWith('0')) {
-          phone = '62' + phone.slice(1)
+      if (userTeam.id === match.team_id) {
+          setNotification({
+              type: 'error',
+              title: 'Tidak Bisa Menghubungi Diri Sendiri',
+              message: 'Anda tidak bisa menghubungi tim Anda sendiri.'
+          })
+          return
       }
 
-      // 3. SUSUN PESAN YANG LEBIH RAPI & LENGKAP
-      // Gunakan \n untuk enter (baris baru)
-      let message = `Halo Manager Tim *${match.teams.name}*! 👋\n\n`
-      message += `Saya melihat jadwal sparring Anda di aplikasi:\n`
-      message += `📅 Tanggal: *${match.play_date}*\n`
-      message += `⏰ Jam: *${match.play_time.slice(0, 5)} WIB*\n`
-      message += `📍 Lokasi: ${match.location_name}\n`
-      
-      // Tambahkan detail sistem bayar biar jelas di awal
-      const feeLabel = match.fee_type === 'Split' ? 'Patungan (Split)' : match.fee_type === 'LoserPays' ? 'Kalah Bayar' : 'Host Bayar';
-      message += `💰 Sistem: ${feeLabel}\n\n`
+      try {
+          setIsContactingWA(true)
 
-      // Jika ada deskripsi/catatan khusus, mention juga biar sopan
-      if (match.description) {
-         message += `Saya juga sudah membaca catatan: _"${match.description}"_\n\n`
+          // Check if already requested
+          const { data: existingRequest, error: checkError } = await supabase
+              .from('match_requests')
+              .select('id')
+              .eq('match_id', match.id)
+              .eq('requesting_team_id', userTeam.id)
+
+          if (checkError) {
+              throw checkError
+          }
+
+          if (existingRequest && existingRequest.length > 0) {
+              setNotification({
+                  type: 'warning',
+                  title: 'Sudah Menghubungi',
+                  message: 'Anda sudah mengirim permintaan untuk pertandingan ini. Tunggu respons dari tim.'
+              })
+              setShowContactModal(false)
+              return
+          }
+
+          // Create match request
+          const { data: insertedData, error: insertError } = await supabase
+              .from('match_requests')
+              .insert([
+                  {
+                      match_id: match.id,
+                      requesting_team_id: userTeam.id,
+                      status: 'pending'
+                  }
+              ])
+              .select()
+
+          if (insertError) {
+              throw insertError
+          }
+
+          setNotification({
+              type: 'success',
+              title: 'Permintaan Terkirim!',
+              message: `Tim ${match.teams.name} akan melihat permintaan Anda di dashboard mereka. Tunggu respons mereka.`
+          })
+          setShowContactModal(false)
+      } catch (error) {
+          setNotification({
+              type: 'error',
+              title: 'Gagal Mengirim',
+              message: 'Pastikan Anda sudah login dan memiliki tim. Jika masalah berlanjut, hubungi admin.'
+          })
+      } finally {
+          setIsContactingWA(false)
       }
-
-      message += `Apakah slot ini masih open? Kami berminat sparring. Terima kasih.`
-      
-      // 4. Buka WhatsApp
-      const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
-      window.open(url, '_blank')
-    }
+  }
 
   // --- FUNGSI BARU: SHARE KE GRUP WA ---
   const handleShare = () => {
@@ -134,37 +235,233 @@ export default function MatchDetail() {
     window.open(waUrl, '_blank')
   }
 
+  // --- NEW: FUNCTION TO OPEN OR CREATE CONVERSATION & NAVIGATE TO CHAT ---
+  const handleOpenChat = async () => {
+    if (!currentUser || !userTeam || !match) {
+      setNotification({
+        type: 'error',
+        title: 'Tidak Bisa Membuka Chat',
+        message: 'Login terlebih dahulu atau pastikan Anda sudah membuat tim.'
+      })
+      return
+    }
+
+    if (userTeam.id === match.team_id) {
+      setNotification({
+        type: 'error',
+        title: 'Tidak Bisa Chat Diri Sendiri',
+        message: 'Anda tidak bisa membuka chat dengan tim Anda sendiri.'
+      })
+      return
+    }
+
+    try {
+      setLoadingChat(true)
+
+      // Cek apakah conversation sudah ada untuk match ini
+      // Query: cari conversation dimana team_a OR team_b adalah userTeam
+      const { data: convList, error: queryError } = await supabase
+        .from('conversations')
+        .select('*')
+        .eq('match_id', match.id)
+
+      if (queryError) {
+        console.error('Query conversations error:', queryError)
+        setNotification({
+          type: 'error',
+          title: 'Error',
+          message: 'Gagal memuat chat. Silakan coba lagi.'
+        })
+        setLoadingChat(false)
+        return
+      }
+
+      // Filter: ambil conversation yang melibatkan userTeam
+      let conversation = null
+      if (convList && convList.length > 0) {
+        conversation = convList.find(
+          (conv) => conv.team_a_id === userTeam.id || conv.team_b_id === userTeam.id
+        )
+      }
+
+      // Jika belum ada conversation, buat otomatis
+      if (!conversation) {
+        // Determine roles:
+        // - Jika userTeam adalah host (match.team_id) → team_a_id = userTeam, team_b_id = null
+        // - Jika userTeam bukan host → team_a_id = match.team_id, team_b_id = userTeam
+        const isHost = userTeam.id === match.team_id
+        
+        const newConversation = {
+          match_id: match.id,
+          team_a_id: isHost ? userTeam.id : match.team_id,
+          team_b_id: isHost ? null : userTeam.id,
+          status: 'Open',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+
+        const { data: createdConv, error: createError } = await supabase
+          .from('conversations')
+          .insert([newConversation])
+          .select()
+          .single()
+
+        if (createError || !createdConv) {
+          console.error('Create conversation error:', createError)
+          setNotification({
+            type: 'error',
+            title: 'Error',
+            message: 'Gagal membuat percakapan. Silakan coba lagi.'
+          })
+          setLoadingChat(false)
+          return
+        }
+
+        conversation = createdConv
+      }
+
+      // Conversation ada atau baru dibuat, buka chat dengan passing conversationId di URL
+      window.location.href = `/matches/${match.id}/chat?conversationId=${conversation.id}`
+    } catch (error) {
+      console.error('Chat error:', error)
+      setNotification({
+        type: 'error',
+        title: 'Error',
+        message: 'Terjadi kesalahan saat membuka chat.'
+      })
+      setLoadingChat(false)
+    }
+  }
+
+  // --- CHALLENGE RESPONSE HANDLERS ---
+  const handleChallengeResponse = async (action) => {
+    if (!currentUser || !userTeam || !match) return
+
+    setIsResponding(true)
+    try {
+      // 1. Verify: Jika action = 'accept', cek apakah opponent_team_id sudah di-set
+      if (action === 'accept' && match.opponent_team_id) {
+        throw new Error('Jadwal ini sudah dikonfirmasi oleh tim lain sebelumnya.')
+      }
+
+      const newStatus = action === 'accept' ? 'Confirmed' : 'Rejected'
+      
+      // 2. Update match status DAN opponent_team_id (untuk verifikasi)
+      const updateData = { 
+        status: newStatus
+      }
+
+      // Jika accept, set opponent_team_id = userTeam.id
+      if (action === 'accept') {
+        updateData.opponent_team_id = userTeam.id
+      }
+
+      const { error: updateError } = await supabase
+        .from('matches')
+        .update(updateData)
+        .eq('id', match.id)
+        .select()
+
+      console.log('Update result:', { updateError, updateData })
+      
+      if (updateError) {
+        throw new Error(`Update error: ${updateError.message || JSON.stringify(updateError)}`)
+      }
+
+      // 3. Refresh match data
+      await fetchMatchDetail()
+
+      // 4. Success - skip notification for now (RLS policy issue)
+      // TODO: Create PostgreSQL trigger to auto-create notifications on match status change
+
+      setNotification({
+        type: 'success',
+        title: action === 'accept' ? 'Challenge Diterima! ✓' : 'Challenge Ditolak',
+        message: action === 'accept' 
+          ? `${userTeam.name} siap sparring! Segera hubungi mereka.`
+          : `Anda telah menolak challenge ini.`
+      })
+
+    } catch (error) {
+      console.error('Response error details:', {
+        message: error?.message,
+        error: error,
+        fullError: JSON.stringify(error)
+      })
+      setNotification({
+        type: 'error',
+        title: 'Gagal Merespons',
+        message: error?.message || 'Terjadi kesalahan tidak diketahui. Coba lagi.'
+      })
+    } finally {
+      setIsResponding(false)
+      setShowConfirmModal(false)
+    }
+  }
+
   useEffect(() => {
     const fetchMatchData = async () => {
       try {
         setLoading(true)
         
-        // 1. AMBIL USER LOGIN (TAMBAHKAN INI)
+        // 1. Get current user
         const { data: { user } } = await supabase.auth.getUser()
-        setCurrentUser(user) // Simpan user ke state agar variabel 'currentUser' tidak error
+        setCurrentUser(user)
 
-        // 2. Ambil Data Match
-        const { data, error } = await supabase
+        // 2. Fetch match data (without join)
+        const { data: matchData, error: matchError } = await supabase
           .from('matches')
-          .select('*, teams(*)') // Join ke tabel teams
+          .select('*')
           .eq('id', id)
           .single()
 
-        if (error) throw error
-        setMatch(data)
+        if (matchError) throw matchError
 
-        // 3. Ambil Nomor WA Manager
-        if (data.teams?.manager_id) {
-            const { data: profile } = await supabase
+        // 3. Fetch team data separately
+        let enhancedMatch = { ...matchData }
+        if (matchData?.team_id) {
+          const { data: teamData } = await supabase
+            .from('teams')
+            .select('id, name, city, logo_url, skill_level, manager_id')
+            .eq('id', matchData.team_id)
+            .single()
+          
+          enhancedMatch.teams = teamData || null
+        }
+
+        // 4. Fetch opponent team if exists
+        if (matchData?.opponent_team_id) {
+          const { data: opponentData } = await supabase
+            .from('teams')
+            .select('id, name, city, logo_url, skill_level, manager_id')
+            .eq('id', matchData.opponent_team_id)
+            .single()
+          
+          enhancedMatch.opponent_teams = opponentData || null
+        }
+
+        setMatch(enhancedMatch)
+
+        // 5. Fetch manager's WhatsApp number
+        if (enhancedMatch?.teams?.manager_id) {
+            const { data: profile, error: profileError } = await supabase
                 .from('profiles')
                 .select('whatsapp_number')
-                .eq('id', data.teams.manager_id)
+                .eq('id', enhancedMatch.teams.manager_id)
                 .single()
-            setManagerPhone(profile?.whatsapp_number)
+            
+            if (!profileError && profile) {
+              setManagerPhone(profile.whatsapp_number)
+            }
         }
 
       } catch (error) {
-        console.error("Error:", error)
+        console.error("Error fetching match:", {
+          message: error?.message,
+          code: error?.code,
+          details: error?.details,
+          fullError: error
+        })
       } finally {
         setLoading(false)
       }
@@ -422,6 +719,36 @@ export default function MatchDetail() {
                 </div>
             </div>
 
+            {/* Team Ratings Summary */}
+            {match.teams && (
+                <div>
+                    {ratingsLoading ? (
+                        <div className="bg-gray-50 rounded-lg p-4 text-center">
+                            <p className="text-gray-600 text-sm">Loading ratings...</p>
+                        </div>
+                    ) : (
+                        <TeamRatingSummary team={match.teams} />
+                    )}
+                </div>
+            )}
+
+            {/* Team Ratings History */}
+            {teamRatings.length > 0 && (
+                <div>
+                    <h3 className="text-lg font-bold text-gray-900 mb-3">
+                        Rating dari Tim Lain ({teamRatings.length})
+                    </h3>
+                    <div className="space-y-2">
+                        {teamRatings.map((rating) => (
+                            <RatingDisplay
+                                key={rating.id}
+                                rating={rating}
+                                raterTeamName={rating.rater_team?.name || 'Tim'}
+                            />
+                        ))}
+                    </div>
+                </div>
+            )}
 
             <div>
                 {/* TAMPILKAN DESKRIPSI JIKA ADA */}
@@ -476,17 +803,102 @@ export default function MatchDetail() {
             <div className="pt-4 space-y-3">
                 
                 {currentUser ? (
-                // KONDISI 1: USER SUDAH LOGIN (Buka Modal Konfirmasi)
+                // KONDISI 1: USER SUDAH LOGIN
                 <>
-                    <button 
-                        onClick={() => setShowContactModal(true)} // Ubah ini: Buka Modal
-                        className="group w-full bg-[#25D366] hover:bg-[#20bd5a] text-white text-lg font-bold py-4 px-6 rounded-xl shadow-lg shadow-green-200 transition-all transform active:scale-95 flex items-center justify-center gap-3"
-                    >
-                        <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.355-5.294 9.881 9.881 0 019.884-9.881 9.881 9.881 0 019.88 9.88 9.88 9.88 0 01-9.88 9.88M12 2C6.48 2 2 6.48 2 12c0 1.84.48 3.58 1.32 5.12L2.12 21.88l4.88-1.21C8.42 21.52 10.16 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2z"/></svg>
-                        Hubungi Lawan
-                    </button>
+                    {/* Match Status Badge */}
+                    {match.status !== 'Open' && (
+                        <div className={`text-center py-3 px-4 rounded-xl mb-4 font-bold text-sm ${
+                            match.status === 'Confirmed' ? 'bg-green-100 text-green-700' :
+                            match.status === 'Rejected' ? 'bg-red-100 text-red-700' :
+                            'bg-blue-100 text-blue-700'
+                        }`}>
+                            {match.status === 'Confirmed' ? '✓ Challenge Dikonfirmasi' :
+                             match.status === 'Rejected' ? '✗ Challenge Ditolak' : 'Status: ' + match.status}
+                        </div>
+                    )}
 
-                    {/* --- MODAL KONFIRMASI (Letakkan di sini agar tetap dalam fragment) --- */}
+                    {currentUser.id !== match.user_id && (
+                        <button 
+                            onClick={handleOpenChat}
+                            disabled={loadingChat}
+                            className="group w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 disabled:from-gray-400 disabled:to-gray-400 text-white text-lg font-bold py-4 px-6 rounded-xl shadow-lg shadow-blue-200 disabled:shadow-none transition-all transform active:scale-95 flex items-center justify-center gap-3"
+                        >
+                            {loadingChat ? (
+                                <>
+                                    <span className="animate-spin">⏳</span>
+                                    Membuka Chat...
+                                </>
+                            ) : (
+                                <>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+                                    Chat dengan {match.teams?.name}
+                                </>
+                            )}
+                        </button>
+                    )}
+
+                    {/* Rating Button - Hanya muncul jika match Done */}
+                    {match.status === 'Done' && currentUser.id !== match.user_id && (
+                        <button
+                            onClick={() => setShowRatingModal(true)}
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white text-lg font-bold py-4 px-6 rounded-xl shadow-lg shadow-blue-200 transition-all transform active:scale-95 flex items-center justify-center gap-3"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                            Beri Rating
+                        </button>
+                    )}
+
+                    {/* --- MODAL KONFIRMASI RESPONSE --- */}
+                    {showConfirmModal && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                            <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-gray-100">
+                                <div className="text-center mb-6">
+                                    <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                                        responseAction === 'accept' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
+                                    }`}>
+                                        {responseAction === 'accept' ? (
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                        ) : (
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                        )}
+                                    </div>
+                                    <h3 className="text-xl font-black text-gray-900">
+                                        {responseAction === 'accept' ? 'Terima Challenge?' : 'Tolak Challenge?'}
+                                    </h3>
+                                    <p className="text-gray-500 text-sm mt-2">
+                                        {responseAction === 'accept' 
+                                            ? `Tim ${match.teams?.name} akan tahu bahwa Anda menerima tantangan ini.`
+                                            : `Tim ${match.teams?.name} akan tahu bahwa Anda menolak tantangan ini.`
+                                        }
+                                    </p>
+                                </div>
+
+                                <div className="flex gap-3">
+                                    <button 
+                                        onClick={() => setShowConfirmModal(false)}
+                                        disabled={isResponding}
+                                        className="flex-1 py-3.5 rounded-xl font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition disabled:opacity-50"
+                                    >
+                                        Batal
+                                    </button>
+                                    
+                                    <button 
+                                        onClick={() => handleChallengeResponse(responseAction)}
+                                        disabled={isResponding}
+                                        className={`flex-1 py-3.5 rounded-xl font-bold text-white transition disabled:opacity-50 flex items-center justify-center gap-2 ${
+                                            responseAction === 'accept' 
+                                                ? 'bg-green-600 hover:bg-green-700 shadow-lg shadow-green-200'
+                                                : 'bg-red-600 hover:bg-red-700 shadow-lg shadow-red-200'
+                                        }`}
+                                    >
+                                        {isResponding ? 'Memproses...' : (responseAction === 'accept' ? 'Terima' : 'Tolak')}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* --- MODAL KONFIRMASI CONTACT --- */}
                     {showContactModal && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
                             <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl transform transition-all scale-100 border border-gray-100">
@@ -495,30 +907,39 @@ export default function MatchDetail() {
                                     <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
                                     </div>
-                                    <h3 className="text-xl font-black text-gray-900">Hubungi via WhatsApp?</h3>
+                                    <h3 className="text-xl font-black text-gray-900">Kirim Permintaan?</h3>
                                     <p className="text-gray-500 text-sm mt-2 leading-relaxed">
-                                        Pastikan Anda menggunakan bahasa yang sopan saat menghubungi calon lawan.
+                                        Tim {match.teams?.name} akan melihat permintaan Anda di dashboard mereka dan bisa menerimanya atau menolaknya.
                                     </p>
                                 </div>
 
                                 <div className="flex gap-3">
                                     <button 
                                         onClick={() => setShowContactModal(false)}
-                                        className="flex-1 py-3.5 rounded-xl font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition"
+                                        disabled={isContactingWA}
+                                        className="flex-1 py-3.5 rounded-xl font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition disabled:opacity-50"
                                     >
                                         Batal
                                     </button>
                                     
-                                    {/* Tombol yang sebenarnya membuka WA */}
                                     <button 
                                         onClick={() => {
-                                            handleContactWA(); // Panggil fungsi WA asli di sini
-                                            setShowContactModal(false); // Tutup modal
+                                            handleContactWA();
                                         }}
-                                        className="flex-1 py-3.5 rounded-xl font-bold text-white bg-[#25D366] hover:bg-[#20bd5a] transition flex items-center justify-center gap-2 shadow-lg shadow-green-200"
+                                        disabled={isContactingWA}
+                                        className="flex-1 py-3.5 rounded-xl font-bold text-white bg-[#25D366] hover:bg-[#20bd5a] disabled:bg-gray-400 transition flex items-center justify-center gap-2 shadow-lg shadow-green-200"
                                     >
-                                        Lanjut Chat
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                                        {isContactingWA ? (
+                                            <>
+                                                <span className="animate-spin">⏳</span>
+                                                Mengirim...
+                                            </>
+                                        ) : (
+                                            <>
+                                                Kirim Permintaan
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                                            </>
+                                        )}
                                     </button>
                                 </div>
 
@@ -619,6 +1040,30 @@ export default function MatchDetail() {
             </div>
         </div>
     )}
+
+    {/* Rating Modal */}
+    <RatingModal
+        isOpen={showRatingModal}
+        onClose={() => setShowRatingModal(false)}
+        matchId={match?.id}
+        ratedTeamId={match?.teams?.id}
+        raterTeamId={userTeam?.id}
+        ratedTeamName={match?.teams?.name}
+        onSuccess={() => {
+            // Refresh ratings setelah submit
+            if (match?.teams?.id) {
+                getRatingsForTeam(match.teams.id)
+                    .then(ratings => setTeamRatings(ratings || []))
+                    .catch(err => console.error('Error refreshing ratings:', err))
+            }
+            // Show success notification
+            setNotification({
+                type: 'success',
+                title: 'Rating Berhasil!',
+                message: 'Terima kasih telah memberikan rating.'
+            })
+        }}
+    />
 
     </div>
   )

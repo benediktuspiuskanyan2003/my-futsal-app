@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import Link from 'next/link'
+import clientLogger from '../../lib/clientLogger'
 
 export default function RegisterPage() {
   const [loading, setLoading] = useState(false)
@@ -18,6 +19,8 @@ export default function RegisterPage() {
     setNotification(null)
 
     try {
+        clientLogger.info('Register attempt', { email, fullName, page: 'register' })
+        
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -33,6 +36,8 @@ export default function RegisterPage() {
              throw new Error('Email ini sudah terdaftar. Silakan login.')
         }
 
+        clientLogger.info('Register success', { email, fullName, page: 'register' })
+        
         setNotification({
             type: 'success',
             title: 'Cek Email Anda! 📧',
@@ -40,6 +45,12 @@ export default function RegisterPage() {
         })
 
     } catch (error) {
+      clientLogger.error('Register failed', { 
+        email, 
+        fullName,
+        error: error.message,
+        page: 'register' 
+      })
       setNotification({
         type: 'error',
         title: 'Gagal Daftar',
